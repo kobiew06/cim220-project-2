@@ -6,7 +6,7 @@
   <meta name="description" content="Our project looks at how people can get stuck in things that feel normal.">
   <title>The Allegory of the Cave: A Modern Interpretation | CIM220 Project 2</title>
   <link rel="stylesheet" href="styles.css">
-  <script src="script.js" defer></script>
+  <script type="module" src="./script.js"></script>
 </head>
 <body>
   <header class="site-header">
@@ -24,11 +24,12 @@
   <main id="top">
     <section class="intro" id="project">
       <div class="intro-heading">
-        <div>
+        <div class="intro-title">
           <p class="eyebrow">CIM220 · Project 2</p>
           <h1>The Allegory of the Cave</h1>
         </div>
         <p class="intro-copy">Our project looks at how people can get stuck in things that feel normal, such as work, habits or addiction. What happens when you stop and question the cycle?</p>
+        <div class="animation-stage" id="animation-stage" aria-hidden="true"></div>
       </div>
       <figure class="reference-image hero-image">
         <!-- Example image. Replace the src with the group's finished image when ready. -->
@@ -80,9 +81,6 @@
           <h2 id="artwork-heading">Artwork and process</h2>
         </div>
         <p>(art goes here)</p>
-      </div>
-      <div class="animation-stage" id="animation-stage">
-        <p>(Brodey's animation goes here)</p>
       </div>
       <figure class="reference-image artwork-image">
         <!-- Example image. Replace with the group's artwork when ready. -->
