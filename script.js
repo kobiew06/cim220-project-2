@@ -6,6 +6,7 @@ import { createPageShadows } from './page-shadows.js';
 import { createImageReveals } from './image-reveal.js';
 import { createLanternDrag } from './lantern-drag.js';
 import { createDragSpring } from './drag-spring.js';
+import { nativeScrolling, getRenderWindow } from './scroll-mode.js';
 import './scrolling.js';
 import './navigation.js';
 import './typography.js';
@@ -83,6 +84,8 @@ if (animationStage && stops.length) {
     let travel;
     let width = 0;
     let height = 0;
+    let pageHeight = 0;
+    let renderHeight = 0;
     let scrollFrame;
     let disposed = false;
     const lightOffset = new THREE.Vector3();
@@ -97,6 +100,24 @@ if (animationStage && stops.length) {
     let springTime = performance.now();
 
     const render = () => {
+      if (!width || !height) return;
+      const viewport = getRenderWindow(window.scrollY, height, pageHeight, nativeScrolling.matches);
+      const origin = viewport.origin;
+      if (renderHeight !== viewport.height) {
+        renderHeight = viewport.height;
+        camera.top = renderHeight / 2;
+        camera.bottom = -renderHeight / 2;
+        camera.updateProjectionMatrix();
+        renderer.setSize(width, renderHeight);
+      }
+      const layerPosition = nativeScrolling.matches ? 'absolute' : 'fixed';
+      const layerTop = nativeScrolling.matches ? `${origin}px` : '0px';
+      for (const layer of [animationStage, pageLight]) {
+        layer.style.position = layerPosition;
+        layer.style.top = layerTop;
+        layer.style.bottom = 'auto';
+        layer.style.height = `${renderHeight}px`;
+      }
       const now = performance.now();
       if (dragging || dragPosition.blend > 0) {
         const point = dragSpring.step((now - springTime) / 1000);
@@ -110,7 +131,7 @@ if (animationStage && stops.length) {
       const x = THREE.MathUtils.lerp(orbitX, dragPosition.x, dragPosition.blend);
       const y = THREE.MathUtils.lerp(orbitY, dragPosition.y + window.scrollY, dragPosition.blend);
       dragControl?.update(x, y - window.scrollY, pose.size, Boolean(lanternModel));
-      lantern.position.set(x - width / 2, height / 2 - (y - window.scrollY), 0);
+      lantern.position.set(x - width / 2, renderHeight / 2 - (y - origin), 0);
       lantern.rotation.set(Math.sin(orbit.phase) * 0.08, 0.45 + Math.sin(orbit.phase) * 0.7, Math.sin(orbit.phase) * 0.12);
       lantern.scale.setScalar(pose.size);
       const size = pose.size;
@@ -127,10 +148,10 @@ if (animationStage && stops.length) {
       );
       const flicker = light.intensity / lightIntensity;
       pageLight.style.setProperty('--light-x', `${x}px`);
-      pageLight.style.setProperty('--light-y', `${y - window.scrollY + size * 0.15}px`);
+      pageLight.style.setProperty('--light-y', `${y - origin + size * 0.15}px`);
       pageLight.style.setProperty('--light-radius', `${Math.min(lanternLightRadius, width * 0.9) * (0.99 + flicker * 0.01)}px`);
       pageShadows.update(x, y + size * 0.15, Math.min(lanternLightRadius, width * 0.9));
-      imageReveals.update(x, y + size * 0.15, gsap.ticker.time, width, height);
+      imageReveals.update(x, y + size * 0.15, gsap.ticker.time, width, renderHeight, origin);
       fill.target.position.copy(lantern.position);
       fill.position.copy(lantern.position).add(fillOffset.set(-size * 3, -size, size * 2));
       // Keep the lantern above the text and images throughout its orbit.
@@ -148,7 +169,6 @@ if (animationStage && stops.length) {
           ...bounds[index],
           duration: travelDuration,
           ease: 'power2.inOut',
-          onUpdate: render,
           onComplete: render,
         });
       }
@@ -159,7 +179,7 @@ if (animationStage && stops.length) {
       if (!bounds.length || dragging) return;
       const focus = window.scrollY + height * 0.4;
       const distance = (index) => Math.abs(bounds[index].y - focus);
-      const maxScroll = Math.max(0, document.documentElement.scrollHeight - height);
+      const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
       // Short final sections may never reach the viewport focus line. Select
       // endpoints explicitly and bypass the usual switching margin there.
       const atTop = window.scrollY <= 2;
@@ -180,7 +200,6 @@ if (animationStage && stops.length) {
       scrollFrame = requestAnimationFrame(() => {
         scrollFrame = undefined;
         selectStop();
-        render();
       });
     };
 
@@ -188,16 +207,19 @@ if (animationStage && stops.length) {
       if (disposed) return;
       pageShadows.measure();
       imageReveals.measure();
-      width = document.documentElement.clientWidth;
-      height = window.innerHeight;
+      const measuredWidth = document.documentElement.clientWidth;
+      // Browser chrome changing height must not constantly resize the canvas.
+      if (!height || !nativeScrolling.matches || width !== measuredWidth) height = window.innerHeight;
+      width = measuredWidth;
+      pageHeight = document.querySelector('.site-footer').getBoundingClientRect().bottom + window.scrollY;
       camera.left = -width / 2;
       camera.right = width / 2;
-      camera.top = height / 2;
-      camera.bottom = -height / 2;
       camera.updateProjectionMatrix();
-      renderer.setSize(width, height);
+      renderHeight = 0;
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, nativeScrolling.matches ? 1.25 : 2));
       // One responsive size for every stop; scrolling never changes it.
       const size = Math.min(lanternSize, width * 0.12);
+      const previousBounds = bounds;
       bounds = stops.map((stop) => {
         const isImage = stop.tagName === 'IMG';
         let rect;
@@ -222,9 +244,12 @@ if (animationStage && stops.length) {
       if (activeIndex < 0) selectStop(true);
       else if (!dragging) {
         // Keep an in-flight trip moving to its new responsive destination.
-        goToStop(activeIndex, !travel?.isActive());
+        const previous = previousBounds[activeIndex];
+        const changed = !previous || Object.keys(bounds[activeIndex]).some((key) => Math.abs(bounds[activeIndex][key] - previous[key]) > 0.5);
+        if (changed) goToStop(activeIndex, !travel?.isActive());
         selectStop();
       }
+      render();
     };
 
     dragControl = createLanternDrag({
@@ -247,7 +272,7 @@ if (animationStage && stops.length) {
         selectStop();
         if (activeIndex >= 0) goToStop(activeIndex);
         returnMotion = gsap.to(dragPosition, {
-          blend: 0, duration: 1, ease: 'power2.inOut', onUpdate: render,
+          blend: 0, duration: 1, ease: 'power2.inOut',
         });
       },
     });
@@ -262,13 +287,18 @@ if (animationStage && stops.length) {
     }).catch((error) => console.error('The lantern model could not load.', error));
     measure();
     const rotation = gsap.to(orbit, {
-      phase: Math.PI * 2, duration: orbitDuration, repeat: -1, ease: 'none', onUpdate: render,
+      phase: Math.PI * 2, duration: orbitDuration, repeat: -1, ease: 'none',
     });
+    gsap.ticker.add(render);
     const resizeObserver = new ResizeObserver(measure);
     resizeObserver.observe(document.querySelector('main'));
     stops.forEach((stop) => resizeObserver.observe(stop));
     window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', measure);
+    const onResize = () => {
+      if (!nativeScrolling.matches || document.documentElement.clientWidth !== width) measure();
+    };
+    window.addEventListener('resize', onResize);
+    nativeScrolling.addEventListener('change', measure);
     window.addEventListener('load', measure);
     document.fonts.ready.then(measure);
 
@@ -279,10 +309,12 @@ if (animationStage && stops.length) {
         returnMotion?.kill();
         dragControl.dispose();
         rotation.kill();
+        gsap.ticker.remove(render);
         if (scrollFrame !== undefined) cancelAnimationFrame(scrollFrame);
         resizeObserver.disconnect();
         window.removeEventListener('scroll', onScroll);
-        window.removeEventListener('resize', measure);
+        window.removeEventListener('resize', onResize);
+        nativeScrolling.removeEventListener('change', measure);
         window.removeEventListener('load', measure);
         disposeLantern(lantern);
         reflections.dispose();
@@ -292,6 +324,7 @@ if (animationStage && stops.length) {
         pageLight.remove();
         pageShadows.dispose();
         imageReveals.dispose();
+        for (const property of ['position', 'top', 'bottom', 'height']) animationStage.style.removeProperty(property);
       });
     }
   }

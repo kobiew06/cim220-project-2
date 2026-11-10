@@ -128,11 +128,11 @@ export function createImageReveals(scene) {
 
   return {
     measure() { entries.forEach(measureEntry); },
-    update(lightX, lightY, time, width, height) {
+    update(lightX, lightY, time, width, height, origin = window.scrollY) {
       for (const entry of entries) {
         if (!entry.mesh || !entry.rect) continue;
         const rect = entry.rect;
-        const top = rect.top - window.scrollY;
+        const top = rect.top - origin;
         entry.mesh.visible = top + rect.height >= 0 && top <= height;
         if (!entry.mesh.visible) continue;
         entry.shadow.style.boxShadow = entry.image.style.getPropertyValue('--lantern-cast-shadow');

@@ -19,7 +19,7 @@ Open the local URL printed in the terminal to see the lantern orbit the title. A
 - `styles.css`: colours and layout.
 - `script.js`: the Three.js scene, lantern, lighting and GSAP motion. Try changing the material's `color` or the animation's `duration`.
 - `navigation.js`: tracks the current section and slides one persistent underline between navigation links as you scroll.
-- `scrolling.js`: Lenis smooths mouse-wheel scrolling and navigation jumps on GSAP's animation loop. Touch scrolling stays native. Adjust `lerp` (currently `0.12`) for a tighter response (higher) or a longer glide (lower).
+- `scrolling.js`: Lenis smooths desktop mouse-wheel scrolling and navigation jumps on GSAP's animation loop. Phones, coarse/touch pointers and windows below 768px use native scrolling with no Lenis instance. Adjust `lerp` (currently `0.12`) for a tighter response (higher) or a longer glide (lower).
 
 The lantern has an animated warm key light, subtle torch flicker and a cool fill light. Adjust `lightIntensity` at the top of `script.js`. Its lighting follows it between stops. The lantern does not cast a silhouette onto the page; text and image shadows are handled separately by `page-shadows.js`.
 
@@ -31,7 +31,7 @@ The page uses dark backgrounds and a fixed radial lighting overlay that reveals 
 
 The example photos are from Unsplash. Replace their image links and credits with our own project images when they’re ready.
 
-`#animation-stage` is a transparent fixed overlay. All `main h1`, `main h2` and `main img` elements are destinations, in document order. Image orbits sweep over the photograph to illuminate it. Scroll selects the stop nearest 40% down the viewport, with a small margin to prevent flickering between destinations. GSAP completes each move independently of further scrolling. Edit `travelDuration`, `orbitDuration` and `titleClearance` in `script.js` to tune the motion. The titles and images use CSS layer 2; the lantern stays in front on layer 3 throughout its orbit. Stop positions are measured again when the layout resizes.
+`#animation-stage` is a transparent fixed overlay on desktop and an overscanned, document-anchored rendering window on mobile, so it moves with native scrolling between animation frames. All `main h1`, `main h2` and `main img` elements are destinations, in document order. Image orbits sweep over the photograph to illuminate it. Scroll selects the stop nearest 40% down the viewport, with a small margin to prevent flickering between destinations. GSAP completes each move independently of further scrolling. Edit `travelDuration`, `orbitDuration` and `titleClearance` in `script.js` to tune the motion. The titles and images use CSS layer 2; the lantern stays in front on layer 3 throughout its orbit. Stop positions are measured again when the layout resizes.
 
 ## Build
 

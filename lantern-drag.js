@@ -1,3 +1,5 @@
+import { nativeScrolling } from './scroll-mode.js';
+
 // Only this small hit area intercepts input; the rest of the page scrolls normally.
 export function createLanternDrag({ onStart, onMove, onEnd }) {
   const handle = document.createElement('button');
@@ -94,7 +96,9 @@ export function createLanternDrag({ onStart, onMove, onEnd }) {
       handle.hidden = !loaded;
       handle.style.width = `${width}px`;
       handle.style.height = `${height}px`;
-      handle.style.transform = `translate3d(${x - width / 2}px, ${y - height / 2}px, 0)`;
+      handle.style.position = nativeScrolling.matches ? 'absolute' : 'fixed';
+      const pageOffset = nativeScrolling.matches ? window.scrollY : 0;
+      handle.style.transform = `translate3d(${x - width / 2}px, ${y + pageOffset - height / 2}px, 0)`;
     },
     dispose() {
       window.removeEventListener('blur', finish);
