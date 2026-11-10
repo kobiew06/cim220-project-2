@@ -19,6 +19,8 @@ Open the local URL printed in the terminal to see the cube orbit the title. As y
 - `styles.css`: colours and layout.
 - `script.js`: the Three.js scene, cube, lighting and GSAP rotation. Try changing the material's `color` or the animation's `duration`.
 
+The cube has an animated warm key light, subtle torch flicker, a cool fill light and a transparent plane that receives its cast shadow. Adjust `lightIntensity` and `shadowOpacity` at the top of `script.js`. The lighting and shadow follow the cube between titles; HTML elements are not 3D shadow receivers.
+
 The example photos are from Unsplash. Replace their image links and credits with our own project images when they’re ready.
 
 `#animation-stage` is a transparent fixed overlay. All `main h1` and `main h2` headings are destinations. Scroll selects the heading nearest 40% down the viewport, with a small margin to prevent flickering between destinations. GSAP completes each move independently of further scrolling. Edit `travelDuration`, `orbitDuration` and `titleClearance` in `script.js` to tune the motion. The titles and images use CSS layer 2; the cube switches between layers 1 and 3. This switches the entire cube's layer rather than intersecting individual letters in 3D. Heading positions are measured again when the layout resizes.

@@ -9,6 +9,8 @@ const travelDuration = 1.25;
 const orbitDuration = 10;
 // A new title must be this much closer to the viewport focus to take over.
 const titleSwitchMargin = 60;
+const lightIntensity = 3.5;
+const shadowOpacity = 0.28;
 
 if (animationStage && titles.length) {
   let renderer;
@@ -24,13 +26,37 @@ if (animationStage && titles.length) {
     camera.position.z = 1000;
     const geometry = new THREE.BoxGeometry(1, 1, 1);
     const material = new THREE.MeshStandardMaterial({
-      color: 0xfbc246, roughness: 0.35, metalness: 0.15,
+      color: 0xfbc246, roughness: 0.42, metalness: 0.15,
     });
     const cube = new THREE.Mesh(geometry, material);
-    scene.add(cube, new THREE.AmbientLight(0xffffff, 2));
-    const light = new THREE.DirectionalLight(0xffffff, 4);
-    light.position.set(3, 4, 5);
-    scene.add(light);
+    cube.castShadow = true;
+    cube.receiveShadow = true;
+    scene.add(cube, new THREE.AmbientLight(0xffe5c4, 0.7));
+
+    // A moving, torch-coloured key light and a quiet blue fill reveal the faces.
+    const light = new THREE.DirectionalLight(0xffbb77, lightIntensity);
+    light.castShadow = true;
+    light.shadow.mapSize.set(1024, 1024);
+    Object.assign(light.shadow.camera, {
+      left: -300, right: 300, top: 300, bottom: -300, near: 1, far: 1600,
+    });
+    light.shadow.camera.updateProjectionMatrix();
+    light.shadow.bias = -0.0003;
+    light.shadow.normalBias = 0.5;
+    light.shadow.radius = 3;
+    const fill = new THREE.DirectionalLight(0x8abfff, 1.1);
+    scene.add(light, light.target, fill, fill.target);
+
+    // This transparent receiver shows only the real cast shadow over the HTML.
+    const shadowGeometry = new THREE.PlaneGeometry(1, 1);
+    const shadowMaterial = new THREE.ShadowMaterial({
+      color: 0x160c06, opacity: shadowOpacity, depthWrite: false,
+    });
+    const shadowPlane = new THREE.Mesh(shadowGeometry, shadowMaterial);
+    shadowPlane.receiveShadow = true;
+    scene.add(shadowPlane);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     animationStage.replaceChildren(renderer.domElement);
 
@@ -45,6 +71,8 @@ if (animationStage && titles.length) {
     let height = 0;
     let scrollFrame;
     let disposed = false;
+    const lightOffset = new THREE.Vector3();
+    const fillOffset = new THREE.Vector3();
 
     const render = () => {
       const depth = Math.sin(orbit.phase);
@@ -53,6 +81,21 @@ if (animationStage && titles.length) {
       cube.position.set(x - width / 2, height / 2 - (y - window.scrollY), 0);
       cube.rotation.set(0.4 + orbit.phase, 0.6 + orbit.phase * 2, 0.15);
       cube.scale.setScalar(pose.size * (1 + depth * 0.12));
+      const size = pose.size;
+      // Keep the lighting rig with the cube as it travels between headings.
+      light.target.position.copy(cube.position);
+      light.position.copy(cube.position).add(lightOffset.set(
+        Math.cos(orbit.phase) * size * 3,
+        (2.7 + Math.sin(orbit.phase) * 0.8) * size,
+        size * 4,
+      ));
+      light.intensity = lightIntensity * (
+        1 + Math.sin(orbit.phase * 31) * 0.045 + Math.sin(orbit.phase * 47) * 0.025
+      );
+      fill.target.position.copy(cube.position);
+      fill.position.copy(cube.position).add(fillOffset.set(-size * 3, -size, size * 2));
+      shadowPlane.position.set(cube.position.x, cube.position.y - size * 0.4, -size * 1.5);
+      shadowPlane.scale.set(size * 6, size * 6, 1);
       // Every heading is layer 2, between the front and back halves of the orbit.
       animationStage.style.zIndex = depth >= 0 ? '3' : '1';
       renderer.render(scene, camera);
@@ -154,6 +197,9 @@ if (animationStage && titles.length) {
         window.removeEventListener('load', measure);
         geometry.dispose();
         material.dispose();
+        shadowGeometry.dispose();
+        shadowMaterial.dispose();
+        light.shadow.dispose();
         renderer.dispose();
         animationStage.replaceChildren();
       });
