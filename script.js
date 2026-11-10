@@ -1,12 +1,15 @@
 import * as THREE from 'three';
 import { gsap } from 'gsap';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { loadLantern, disposeLantern } from './lantern.js';
+import { createPageShadows } from './page-shadows.js';
 import './scrolling.js';
 import './navigation.js';
 import './typography.js';
 
 const animationStage = document.querySelector('#animation-stage');
 const titles = [...document.querySelectorAll('main h1, main h2')];
-// Extra pixels beyond the text before the cube changes its stacking order.
+// Extra clearance around the text at the ends of the lantern's orbit.
 const titleClearance = 24;
 const travelDuration = 1.25;
 const orbitDuration = 10;
@@ -14,27 +17,32 @@ const orbitDuration = 10;
 const titleSwitchMargin = 60;
 const lightIntensity = 3.5;
 const shadowOpacity = 0.28;
+const lanternSize = 48;
+// Page illumination: radius in pixels and darkness outside the lantern's reach.
+const lanternLightRadius = 420;
+const pageDarkness = 0.62;
 
 if (animationStage && titles.length) {
   let renderer;
   try {
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   } catch (error) {
-    console.warn('The cube preview could not start.', error);
+    console.warn('The lantern preview could not start.', error);
   }
 
   if (renderer) {
     const scene = new THREE.Scene();
     const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 2000);
     camera.position.z = 1000;
-    const geometry = new THREE.BoxGeometry(1, 1, 1);
-    const material = new THREE.MeshStandardMaterial({
-      color: 0xfbc246, roughness: 0.42, metalness: 0.15,
-    });
-    const cube = new THREE.Mesh(geometry, material);
-    cube.castShadow = true;
-    cube.receiveShadow = true;
-    scene.add(cube, new THREE.AmbientLight(0xffe5c4, 0.7));
+    const lantern = new THREE.Group();
+    scene.add(lantern, new THREE.AmbientLight(0xffe5c4, 0.7));
+    const room = new RoomEnvironment();
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const reflections = pmrem.fromScene(room, 0.04);
+    scene.environment = reflections.texture;
+    scene.environmentIntensity = 0.6;
+    room.dispose();
+    pmrem.dispose();
 
     // A moving, torch-coloured key light and a quiet blue fill reveal the faces.
     const light = new THREE.DirectionalLight(0xffbb77, lightIntensity);
@@ -59,9 +67,15 @@ if (animationStage && titles.length) {
     shadowPlane.receiveShadow = true;
     scene.add(shadowPlane);
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     animationStage.replaceChildren(renderer.domElement);
+    const pageLight = document.createElement('div');
+    pageLight.className = 'lantern-page-light';
+    pageLight.setAttribute('aria-hidden', 'true');
+    pageLight.style.setProperty('--page-darkness', pageDarkness);
+    document.body.append(pageLight);
+    const pageShadows = createPageShadows();
 
     const orbit = { phase: 0 };
     // Tween the orbit's centre and dimensions, rather than scrubbing its position.
@@ -81,13 +95,13 @@ if (animationStage && titles.length) {
       const depth = Math.sin(orbit.phase);
       const x = pose.x + Math.cos(orbit.phase) * pose.radiusX;
       const y = pose.y - depth * pose.radiusY;
-      cube.position.set(x - width / 2, height / 2 - (y - window.scrollY), 0);
-      cube.rotation.set(0.4 + orbit.phase, 0.6 + orbit.phase * 2, 0.15);
-      cube.scale.setScalar(pose.size * (1 + depth * 0.12));
+      lantern.position.set(x - width / 2, height / 2 - (y - window.scrollY), 0);
+      lantern.rotation.set(Math.sin(orbit.phase) * 0.08, 0.45 + Math.sin(orbit.phase) * 0.7, Math.sin(orbit.phase) * 0.12);
+      lantern.scale.setScalar(pose.size);
       const size = pose.size;
-      // Keep the lighting rig with the cube as it travels between headings.
-      light.target.position.copy(cube.position);
-      light.position.copy(cube.position).add(lightOffset.set(
+      // Keep the lighting rig with the lantern as it travels between headings.
+      light.target.position.copy(lantern.position);
+      light.position.copy(lantern.position).add(lightOffset.set(
         Math.cos(orbit.phase) * size * 3,
         (2.7 + Math.sin(orbit.phase) * 0.8) * size,
         size * 4,
@@ -95,12 +109,17 @@ if (animationStage && titles.length) {
       light.intensity = lightIntensity * (
         1 + Math.sin(orbit.phase * 31) * 0.045 + Math.sin(orbit.phase * 47) * 0.025
       );
-      fill.target.position.copy(cube.position);
-      fill.position.copy(cube.position).add(fillOffset.set(-size * 3, -size, size * 2));
-      shadowPlane.position.set(cube.position.x, cube.position.y - size * 0.4, -size * 1.5);
+      const flicker = light.intensity / lightIntensity;
+      pageLight.style.setProperty('--light-x', `${x}px`);
+      pageLight.style.setProperty('--light-y', `${y - window.scrollY + size * 0.15}px`);
+      pageLight.style.setProperty('--light-radius', `${Math.min(lanternLightRadius, width * 0.9) * (0.99 + flicker * 0.01)}px`);
+      pageShadows.update(x, y + size * 0.15, Math.min(lanternLightRadius, width * 0.9));
+      fill.target.position.copy(lantern.position);
+      fill.position.copy(lantern.position).add(fillOffset.set(-size * 3, -size, size * 2));
+      shadowPlane.position.set(lantern.position.x, lantern.position.y - size * 0.4, -size * 1.5);
       shadowPlane.scale.set(size * 6, size * 6, 1);
-      // Every heading is layer 2, between the front and back halves of the orbit.
-      animationStage.style.zIndex = depth >= 0 ? '3' : '1';
+      // Keep the lantern above the text and images throughout its orbit.
+      animationStage.style.zIndex = '3';
       renderer.render(scene, camera);
     };
 
@@ -145,6 +164,7 @@ if (animationStage && titles.length) {
 
     const measure = () => {
       if (disposed) return;
+      pageShadows.measure();
       width = document.documentElement.clientWidth;
       height = window.innerHeight;
       camera.left = -width / 2;
@@ -153,17 +173,18 @@ if (animationStage && titles.length) {
       camera.bottom = -height / 2;
       camera.updateProjectionMatrix();
       renderer.setSize(width, height);
+      // One responsive size for every heading; scrolling never changes it.
+      const size = Math.min(lanternSize, width * 0.12);
       bounds = titles.map((title) => {
         // Measure the letters, not the full-width heading block.
         const range = document.createRange();
         range.selectNodeContents(title);
         const rect = range.getBoundingClientRect();
-        const size = Math.min(100, Math.max(28, rect.width * 0.18), Math.max(28, rect.height * 0.5));
-        const cubeRadius = size * Math.sqrt(3) / 2 * 1.12;
+        const modelRadius = size * 0.85;
         return {
           x: rect.left + rect.width / 2,
           y: rect.top + window.scrollY + rect.height / 2,
-          radiusX: rect.width / 2 + cubeRadius + titleClearance,
+          radiusX: rect.width / 2 + modelRadius + titleClearance,
           radiusY: rect.height * 0.28,
           size,
         };
@@ -176,6 +197,14 @@ if (animationStage && titles.length) {
       }
     };
 
+    loadLantern().then((model) => {
+      if (disposed) disposeLantern(model);
+      else {
+        lantern.add(model);
+        pageLight.classList.add('is-lit');
+        render();
+      }
+    }).catch((error) => console.error('The lantern model could not load.', error));
     measure();
     const rotation = gsap.to(orbit, {
       phase: Math.PI * 2, duration: orbitDuration, repeat: -1, ease: 'none', onUpdate: render,
@@ -198,13 +227,15 @@ if (animationStage && titles.length) {
         window.removeEventListener('scroll', onScroll);
         window.removeEventListener('resize', measure);
         window.removeEventListener('load', measure);
-        geometry.dispose();
-        material.dispose();
+        disposeLantern(lantern);
+        reflections.dispose();
         shadowGeometry.dispose();
         shadowMaterial.dispose();
         light.shadow.dispose();
         renderer.dispose();
         animationStage.replaceChildren();
+        pageLight.remove();
+        pageShadows.dispose();
       });
     }
   }
