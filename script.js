@@ -1,20 +1,20 @@
 import * as THREE from 'three';
 import { gsap } from 'gsap';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { loadLantern, disposeLantern } from './lantern.js';
+import { loadLantern, disposeLantern, updateLanternFire } from './lantern.js';
 import { createPageShadows } from './page-shadows.js';
 import './scrolling.js';
 import './navigation.js';
 import './typography.js';
 
 const animationStage = document.querySelector('#animation-stage');
-const titles = [...document.querySelectorAll('main h1, main h2')];
+const stops = [...document.querySelectorAll('main h1, main h2, main img')];
 // Extra clearance around the text at the ends of the lantern's orbit.
 const titleClearance = 24;
 const travelDuration = 1.25;
 const orbitDuration = 10;
-// A new title must be this much closer to the viewport focus to take over.
-const titleSwitchMargin = 60;
+// A new stop must be this much closer to the viewport focus to take over.
+const stopSwitchMargin = 60;
 const lightIntensity = 3.5;
 const shadowOpacity = 0.28;
 const lanternSize = 48;
@@ -22,7 +22,7 @@ const lanternSize = 48;
 const lanternLightRadius = 420;
 const pageDarkness = 0.62;
 
-if (animationStage && titles.length) {
+if (animationStage && stops.length) {
   let renderer;
   try {
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -31,16 +31,18 @@ if (animationStage && titles.length) {
   }
 
   if (renderer) {
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
     const scene = new THREE.Scene();
     const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 2000);
     camera.position.z = 1000;
     const lantern = new THREE.Group();
-    scene.add(lantern, new THREE.AmbientLight(0xffe5c4, 0.7));
+    scene.add(lantern, new THREE.AmbientLight(0xffe5c4, 0.35));
     const room = new RoomEnvironment();
     const pmrem = new THREE.PMREMGenerator(renderer);
     const reflections = pmrem.fromScene(room, 0.04);
     scene.environment = reflections.texture;
-    scene.environmentIntensity = 0.6;
+    scene.environmentIntensity = 0.85;
     room.dispose();
     pmrem.dispose();
 
@@ -90,6 +92,7 @@ if (animationStage && titles.length) {
     let disposed = false;
     const lightOffset = new THREE.Vector3();
     const fillOffset = new THREE.Vector3();
+    let lanternModel;
 
     const render = () => {
       const depth = Math.sin(orbit.phase);
@@ -99,6 +102,7 @@ if (animationStage && titles.length) {
       lantern.rotation.set(Math.sin(orbit.phase) * 0.08, 0.45 + Math.sin(orbit.phase) * 0.7, Math.sin(orbit.phase) * 0.12);
       lantern.scale.setScalar(pose.size);
       const size = pose.size;
+      if (lanternModel) updateLanternFire(lanternModel, gsap.ticker.time, size);
       // Keep the lighting rig with the lantern as it travels between headings.
       light.target.position.copy(lantern.position);
       light.position.copy(lantern.position).add(lightOffset.set(
@@ -123,7 +127,7 @@ if (animationStage && titles.length) {
       renderer.render(scene, camera);
     };
 
-    const goToTitle = (index, immediate = false) => {
+    const goToStop = (index, immediate = false) => {
       travel?.kill();
       activeIndex = index;
       if (immediate) {
@@ -140,15 +144,22 @@ if (animationStage && titles.length) {
       render();
     };
 
-    const selectTitle = (immediate = false) => {
+    const selectStop = (immediate = false) => {
       if (!bounds.length) return;
       const focus = window.scrollY + height * 0.4;
       const distance = (index) => Math.abs(bounds[index].y - focus);
-      const nearest = bounds.reduce((best, _, index) => distance(index) < distance(best) ? index : best, 0);
+      const maxScroll = Math.max(0, document.documentElement.scrollHeight - height);
+      // Short final sections may never reach the viewport focus line. Select
+      // endpoints explicitly and bypass the usual switching margin there.
+      const atTop = window.scrollY <= 2;
+      const atBottom = maxScroll > 2 && window.scrollY >= maxScroll - 2;
+      const atEdge = atTop || atBottom;
+      const nearest = atTop ? 0 : atBottom ? bounds.length - 1
+        : bounds.reduce((best, _, index) => distance(index) < distance(best) ? index : best, 0);
       if (activeIndex < 0 || immediate) {
-        goToTitle(nearest, true);
-      } else if (nearest !== activeIndex && distance(nearest) + titleSwitchMargin < distance(activeIndex)) {
-        goToTitle(nearest);
+        goToStop(nearest, true);
+      } else if (nearest !== activeIndex && (atEdge || distance(nearest) + stopSwitchMargin < distance(activeIndex))) {
+        goToStop(nearest);
       }
     };
 
@@ -157,7 +168,7 @@ if (animationStage && titles.length) {
       if (scrollFrame !== undefined) return;
       scrollFrame = requestAnimationFrame(() => {
         scrollFrame = undefined;
-        selectTitle();
+        selectStop();
         render();
       });
     };
@@ -173,27 +184,34 @@ if (animationStage && titles.length) {
       camera.bottom = -height / 2;
       camera.updateProjectionMatrix();
       renderer.setSize(width, height);
-      // One responsive size for every heading; scrolling never changes it.
+      // One responsive size for every stop; scrolling never changes it.
       const size = Math.min(lanternSize, width * 0.12);
-      bounds = titles.map((title) => {
-        // Measure the letters, not the full-width heading block.
-        const range = document.createRange();
-        range.selectNodeContents(title);
-        const rect = range.getBoundingClientRect();
+      bounds = stops.map((stop) => {
+        const isImage = stop.tagName === 'IMG';
+        let rect;
+        if (isImage) rect = stop.getBoundingClientRect();
+        else {
+          // Measure the letters, not the full-width heading block.
+          const range = document.createRange();
+          range.selectNodeContents(stop);
+          rect = range.getBoundingClientRect();
+        }
         const modelRadius = size * 0.85;
         return {
           x: rect.left + rect.width / 2,
           y: rect.top + window.scrollY + rect.height / 2,
-          radiusX: rect.width / 2 + modelRadius + titleClearance,
-          radiusY: rect.height * 0.28,
+          // Sweep over image content to light it, rather than disappearing
+          // beyond the sides of full-width photographs.
+          radiusX: isImage ? rect.width * 0.38 : rect.width / 2 + modelRadius + titleClearance,
+          radiusY: rect.height * (isImage ? 0.32 : 0.28),
           size,
         };
       });
-      if (activeIndex < 0) selectTitle(true);
+      if (activeIndex < 0) selectStop(true);
       else {
         // Keep an in-flight trip moving to its new responsive destination.
-        goToTitle(activeIndex, !travel?.isActive());
-        selectTitle();
+        goToStop(activeIndex, !travel?.isActive());
+        selectStop();
       }
     };
 
@@ -201,6 +219,7 @@ if (animationStage && titles.length) {
       if (disposed) disposeLantern(model);
       else {
         lantern.add(model);
+        lanternModel = model;
         pageLight.classList.add('is-lit');
         render();
       }
@@ -211,7 +230,7 @@ if (animationStage && titles.length) {
     });
     const resizeObserver = new ResizeObserver(measure);
     resizeObserver.observe(document.querySelector('main'));
-    titles.forEach((title) => resizeObserver.observe(title));
+    stops.forEach((stop) => resizeObserver.observe(stop));
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', measure);
     window.addEventListener('load', measure);
