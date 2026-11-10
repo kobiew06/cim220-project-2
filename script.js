@@ -6,12 +6,14 @@ import { createPageShadows } from './page-shadows.js';
 import { createImageReveals } from './image-reveal.js';
 import { createLanternDrag } from './lantern-drag.js';
 import { createDragSpring } from './drag-spring.js';
+import { createCaveEntrance } from './cave-entrance.js';
 import { nativeScrolling, getRenderWindow } from './scroll-mode.js';
 import './scrolling.js';
 import './navigation.js';
 import './typography.js';
 
 const animationStage = document.querySelector('#animation-stage');
+const introHeading = document.querySelector('.intro-heading');
 const stops = [...document.querySelectorAll('main h1, main h2, main img')];
 // Extra clearance around the text at the ends of the lantern's orbit.
 const titleClearance = 24;
@@ -85,6 +87,7 @@ if (animationStage && stops.length) {
     let width = 0;
     let height = 0;
     let pageHeight = 0;
+    let mainTop = 0;
     let renderHeight = 0;
     let scrollFrame;
     let disposed = false;
@@ -126,11 +129,19 @@ if (animationStage && stops.length) {
       }
       springTime = now;
       const depth = Math.sin(orbit.phase);
-      const orbitX = pose.x + Math.cos(orbit.phase) * pose.radiusX;
-      const orbitY = pose.y - depth * pose.radiusY;
+      const entrance = caveEntrance.getPosition();
+      const handoff = entrance?.handoff ?? 1;
+      const orbitX = THREE.MathUtils.lerp(width * 0.64, pose.x + Math.cos(orbit.phase) * pose.radiusX, handoff);
+      const orbitY = THREE.MathUtils.lerp(
+        window.scrollY + height * 0.65,
+        pose.y - depth * pose.radiusY,
+        handoff,
+      );
       const x = THREE.MathUtils.lerp(orbitX, dragPosition.x, dragPosition.blend);
       const y = THREE.MathUtils.lerp(orbitY, dragPosition.y + window.scrollY, dragPosition.blend);
-      dragControl?.update(x, y - window.scrollY, pose.size, Boolean(lanternModel));
+      dragControl?.update(x, y - window.scrollY, pose.size, Boolean(lanternModel), handoff < 1);
+      pageLight.style.setProperty('--page-light-strength', handoff);
+      if (entrance) caveEntrance.render(entrance.progress, x, y - window.scrollY, Boolean(lanternModel));
       lantern.position.set(x - width / 2, renderHeight / 2 - (y - origin), 0);
       lantern.rotation.set(Math.sin(orbit.phase) * 0.08, 0.45 + Math.sin(orbit.phase) * 0.7, Math.sin(orbit.phase) * 0.12);
       lantern.scale.setScalar(pose.size);
@@ -182,7 +193,7 @@ if (animationStage && stops.length) {
       const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
       // Short final sections may never reach the viewport focus line. Select
       // endpoints explicitly and bypass the usual switching margin there.
-      const atTop = window.scrollY <= 2;
+      const atTop = window.scrollY <= mainTop + 2;
       const atBottom = maxScroll > 2 && window.scrollY >= maxScroll - 2;
       const atEdge = atTop || atBottom;
       const nearest = atTop ? 0 : atBottom ? bounds.length - 1
@@ -205,12 +216,15 @@ if (animationStage && stops.length) {
 
     const measure = () => {
       if (disposed) return;
+      // Orbit targets and projected shadows use the heading's settled layout.
+      introHeading.style.transform = 'none';
       pageShadows.measure();
       imageReveals.measure();
       const measuredWidth = document.documentElement.clientWidth;
       // Browser chrome changing height must not constantly resize the canvas.
       if (!height || !nativeScrolling.matches || width !== measuredWidth) height = window.innerHeight;
       width = measuredWidth;
+      mainTop = document.querySelector('main').getBoundingClientRect().top + window.scrollY;
       pageHeight = document.querySelector('.site-footer').getBoundingClientRect().bottom + window.scrollY;
       camera.left = -width / 2;
       camera.right = width / 2;
@@ -241,6 +255,9 @@ if (animationStage && stops.length) {
           size,
         };
       });
+      const headingTop = introHeading.getBoundingClientRect().top + window.scrollY;
+      introHeading.style.setProperty('--cave-title-origin', `${bounds[0].y - headingTop}px`);
+      introHeading.style.removeProperty('transform');
       if (activeIndex < 0) selectStop(true);
       else if (!dragging) {
         // Keep an in-flight trip moving to its new responsive destination.
@@ -252,8 +269,10 @@ if (animationStage && stops.length) {
       render();
     };
 
+    const caveEntrance = createCaveEntrance(measure);
     dragControl = createLanternDrag({
       onStart(point) {
+        if (caveEntrance.getPosition()) caveEntrance.pickUp();
         returnMotion?.kill();
         travel?.kill();
         dragging = true;
@@ -308,6 +327,8 @@ if (animationStage && stops.length) {
         travel?.kill();
         returnMotion?.kill();
         dragControl.dispose();
+        caveEntrance.dispose();
+        introHeading.style.removeProperty('--cave-title-origin');
         rotation.kill();
         gsap.ticker.remove(render);
         if (scrollFrame !== undefined) cancelAnimationFrame(scrollFrame);

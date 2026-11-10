@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <title>The Allegory of the Cave: A Modern Interpretation | CIM220 Project 2</title>
-  <br>
   <meta name="description" content="Our project looks at how people can get stuck in things that feel normal.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,7 +12,7 @@
   <link rel="stylesheet" href="styles.css">
   <script type="module" src="./script.js"></script>
 </head>
-<body>
+<body id="top">
   <div class="animation-stage" id="animation-stage" aria-hidden="true"></div>
   <header class="site-header">
     <a class="site-name" href="#top" aria-label="The Allegory of the Cave — back to top">
@@ -28,7 +27,16 @@
     </nav>
   </header>
 
-  <main id="top">
+  <section class="cave-entrance" aria-label="Cave entrance" hidden>
+    <div class="cave-view">
+      <div class="cave-controls">
+        <p class="cave-instructions" aria-live="polite">Scroll to enter the cave</p>
+        <a href="#project">Enter cave <span aria-hidden="true">↓</span></a>
+      </div>
+    </div>
+  </section>
+
+  <main>
     <section class="intro" id="project">
       <div class="intro-heading">
         <div class="intro-title">

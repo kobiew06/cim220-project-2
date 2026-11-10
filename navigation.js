@@ -143,6 +143,8 @@ if (nav) {
   const observer = new ResizeObserver(measure);
   observer.observe(nav);
   observer.observe(document.querySelector('main'));
+  const entrance = document.querySelector('.cave-entrance');
+  if (entrance) observer.observe(entrance);
   window.addEventListener('scroll', onScroll, { passive: true });
   window.addEventListener('resize', measure);
   window.addEventListener('load', measure);

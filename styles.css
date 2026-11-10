@@ -95,8 +95,64 @@ a { color: inherit; }
 main section { scroll-margin-top: 80px; }
 
 main { width: 100%; }
+.cave-entrance {
+  height: 155svh;
+  background: var(--dark);
+}
+.cave-view {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 1;
+  height: 100dvh;
+  overflow: hidden;
+  isolation: isolate;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 45%, #293132, var(--dark) 78%);
+}
+.cave-view canvas, .cave-view::after {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.cave-view::after {
+  content: '';
+  background: linear-gradient(180deg, transparent 54%, rgb(12 13 11 / .8));
+}
+.cave-controls {
+  position: absolute;
+  z-index: 1;
+  inset: auto 16px max(36px, env(safe-area-inset-bottom));
+  text-align: center;
+}
+.cave-instructions { margin: 0 0 12px; color: var(--cream); font-size: 14px; }
+.cave-controls a {
+  display: inline-flex;
+  pointer-events: auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid #c69456;
+  border-radius: 2px;
+  background: #191812;
+  color: var(--cream);
+  font-size: 14px;
+  text-decoration: none;
+}
+.cave-controls a:hover { background: #392a17; }
+.cave-entrance:not([hidden]) + main .intro {
+  position: relative;
+  z-index: 2;
+  opacity: var(--cave-page-reveal, 1);
+}
 .intro { width: min(var(--content-width), calc(100% - 48px)); margin: 0 auto; padding: clamp(64px, 10vw, 112px) 0 62px; }
 .intro-heading { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; padding: 48px 0 64px; }
+.intro-heading {
+  transform: var(--cave-title-transform, none);
+  transform-origin: center var(--cave-title-origin, 40%);
+}
 .intro-title, .intro-copy { position: relative; z-index: 2; }
 .eyebrow { margin: 0 0 14px; color: var(--orange); letter-spacing: .09em; text-transform: uppercase; }
 h1,
@@ -200,7 +256,7 @@ h2 { font-size: clamp(29px, 4.5vw, 42px); line-height: 1.06; letter-spacing: -.0
   opacity: 0;
   transition: opacity 700ms ease;
 }
-.lantern-page-light.is-lit { opacity: 1; }
+.lantern-page-light.is-lit { opacity: var(--page-light-strength, 1); }
 .lantern-drag-handle {
   position: fixed;
   top: 0;

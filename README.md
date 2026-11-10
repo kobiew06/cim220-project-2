@@ -11,13 +11,14 @@ npm install
 npm run dev
 ```
 
-Open the local URL printed in the terminal to see the lantern orbit the title. As you scroll, it travels to the nearest title or image and orbits that stop. Each trip finishes even if you stop scrolling. Scroll up to return to earlier stops. Changes to the files update the browser while the server is running. Press Ctrl+C in the terminal to stop it.
+Open the local URL printed in the terminal to start outside the cave. Grab the lantern to brighten the entrance, then scroll to move inside. On touch screens, release the lantern before swiping. The Enter cave link takes you straight to the project. Once inside, the lantern travels to the nearest title or image and orbits that stop. Each trip finishes even if you stop scrolling. Scroll up to return to earlier stops. Changes to the files update the browser while the server is running. Press Ctrl+C in the terminal to stop it.
 
 ## Change things
 
 - `index.html`: the page sections and text.
 - `styles.css`: colours and layout.
 - `script.js`: the Three.js scene, lantern, lighting and GSAP motion. Try changing the material's `color` or the animation's `duration`.
+- `cave-entrance.js`: the scroll-driven entrance camera and lighting. It uses `assets/cave.glb`, a simplified export of `assets/Cave/Cave.fbx` with web materials applied in Three.js.
 - `navigation.js`: tracks the current section and slides one persistent underline between navigation links as you scroll.
 - `scrolling.js`: Lenis smooths desktop mouse-wheel scrolling and navigation jumps on GSAP's animation loop. Phones, coarse/touch pointers and windows below 768px use native scrolling with no Lenis instance. Adjust `lerp` (currently `0.12`) for a tighter response (higher) or a longer glide (lower).
 
@@ -43,6 +44,8 @@ The first cave photograph has a lantern-driven two-image reveal. Set an image's 
 
 The browser loads `assets/lantern.glb`, exported from `assets/lantern.blend` with its textures embedded. `lantern.js` loads and normalizes it and adapts its glass for the transparent website canvas. After editing the Blender source, extract `assets/textures.rar` into `assets/` if needed, then run `blender --background --python scripts/export-lantern.py` to regenerate the GLB. The original Blender file is preserved.
 
-Run `npm run build` to create the production site in `dist/`, then `npm run preview` to check it locally. Hosting must publish the built `dist/` folder rather than the source files. A GitHub Pages project deployment also needs Vite's base path configured for the repository URL.
+Run `npm run build` to create the production site in `dist/`, then `npm run preview` to check it locally.
+
+For GitHub Pages, select **GitHub Actions** under **Settings → Pages → Build and deployment → Source**. The workflow in `.github/workflows/pages.yml` runs on pushes to `main` and can also be started from the Actions tab. It builds with the `/cim220-project-2/` base path and publishes `dist/` so the browser can load the bundled JavaScript and lantern model.
 
 Commit `package.json` and `package-lock.json` so teammates can run `npm install`. The `.gitignore` excludes `node_modules/` and `dist/`.

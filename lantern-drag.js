@@ -15,6 +15,7 @@ export function createLanternDrag({ onStart, onMove, onEnd }) {
   let keyboard = false;
   let centre = { x: 0, y: 0 };
   let offset = { x: 0, y: 0 };
+  let allowWheel = false;
 
   const clamp = (point) => ({
     x: Math.max(24, Math.min(document.documentElement.clientWidth - 24, point.x)),
@@ -75,7 +76,7 @@ export function createLanternDrag({ onStart, onMove, onEnd }) {
     onMove(centre);
   };
   const onWheel = (event) => {
-    if (pointerId !== null || keyboard) event.preventDefault();
+    if (!allowWheel && (pointerId !== null || keyboard)) event.preventDefault();
   };
   handle.addEventListener('pointerdown', onDown);
   handle.addEventListener('pointermove', onPointerMove);
@@ -88,12 +89,16 @@ export function createLanternDrag({ onStart, onMove, onEnd }) {
   window.addEventListener('blur', finish);
 
   return {
-    update(x, y, size, loaded) {
+    update(x, y, size, loaded, scrollWhileHeld) {
       // Keep the held pointer/keyboard target independent of the visual spring.
       if (pointerId === null && !keyboard) centre = { x, y };
       const width = Math.max(64, size * 1.2);
       const height = Math.max(80, size * 1.9);
       handle.hidden = !loaded;
+      if (allowWheel !== scrollWhileHeld) {
+        allowWheel = scrollWhileHeld;
+        handle.toggleAttribute('data-lenis-prevent', !allowWheel);
+      }
       handle.style.width = `${width}px`;
       handle.style.height = `${height}px`;
       handle.style.position = nativeScrolling.matches ? 'absolute' : 'fixed';
