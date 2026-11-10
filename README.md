@@ -18,6 +18,8 @@ Open the local URL printed in the terminal to see the cube orbit the title. As y
 - `index.html`: the page sections and text.
 - `styles.css`: colours and layout.
 - `script.js`: the Three.js scene, cube, lighting and GSAP rotation. Try changing the material's `color` or the animation's `duration`.
+- `navigation.js`: tracks the current section and slides one persistent underline between navigation links as you scroll.
+- `scrolling.js`: Lenis smooths mouse-wheel scrolling and navigation jumps on GSAP's animation loop. Touch scrolling stays native. Adjust `lerp` (currently `0.12`) for a tighter response (higher) or a longer glide (lower).
 
 The cube has an animated warm key light, subtle torch flicker, a cool fill light and a transparent plane that receives its cast shadow. Adjust `lightIntensity` and `shadowOpacity` at the top of `script.js`. The lighting and shadow follow the cube between titles; HTML elements are not 3D shadow receivers.
 

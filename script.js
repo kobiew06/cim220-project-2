@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 import { gsap } from 'gsap';
+import './scrolling.js';
+import './navigation.js';
+import './typography.js';
 
 const animationStage = document.querySelector('#animation-stage');
 const titles = [...document.querySelectorAll('main h1, main h2')];
