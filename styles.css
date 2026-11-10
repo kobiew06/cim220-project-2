@@ -123,6 +123,7 @@ h2 { font-size: clamp(29px, 4.5vw, 42px); line-height: 1.06; letter-spacing: -.0
 .team-section .plain-placeholder { border-color: #bdad98; color: var(--deep-rust); }
 
 .reference-image { margin: 0; }
+.image-reveal-shadow { position: absolute; pointer-events: none; }
 .reference-image img { display: block; width: 100%; object-fit: cover; }
 .hero-image img { height: clamp(280px, 48vw, 520px); object-position: center 52%; }
 .cave-light-image { width: min(100%, 740px); margin: 8px 0 8px auto; }
@@ -200,6 +201,22 @@ h2 { font-size: clamp(29px, 4.5vw, 42px); line-height: 1.06; letter-spacing: -.0
   transition: opacity 700ms ease;
 }
 .lantern-page-light.is-lit { opacity: 1; }
+.lantern-drag-handle {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 6;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.lantern-drag-handle.is-dragging { cursor: grabbing; }
+.lantern-drag-handle:focus-visible { outline: 1px dashed var(--gold); outline-offset: 4px; }
 .lantern-shadow-text { text-shadow: var(--lantern-cast-shadow, none); }
 .lantern-shadow-image { box-shadow: var(--lantern-cast-shadow, none); }
 .lantern-page-light::before,

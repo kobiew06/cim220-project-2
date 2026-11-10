@@ -3,6 +3,9 @@ import { gsap } from 'gsap';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { loadLantern, disposeLantern, updateLanternFire } from './lantern.js';
 import { createPageShadows } from './page-shadows.js';
+import { createImageReveals } from './image-reveal.js';
+import { createLanternDrag } from './lantern-drag.js';
+import { createDragSpring } from './drag-spring.js';
 import './scrolling.js';
 import './navigation.js';
 import './typography.js';
@@ -16,7 +19,6 @@ const orbitDuration = 10;
 // A new stop must be this much closer to the viewport focus to take over.
 const stopSwitchMargin = 60;
 const lightIntensity = 3.5;
-const shadowOpacity = 0.28;
 const lanternSize = 48;
 // Page illumination: radius in pixels and darkness outside the lantern's reach.
 const lanternLightRadius = 420;
@@ -60,14 +62,6 @@ if (animationStage && stops.length) {
     const fill = new THREE.DirectionalLight(0x8abfff, 1.1);
     scene.add(light, light.target, fill, fill.target);
 
-    // This transparent receiver shows only the real cast shadow over the HTML.
-    const shadowGeometry = new THREE.PlaneGeometry(1, 1);
-    const shadowMaterial = new THREE.ShadowMaterial({
-      color: 0x160c06, opacity: shadowOpacity, depthWrite: false,
-    });
-    const shadowPlane = new THREE.Mesh(shadowGeometry, shadowMaterial);
-    shadowPlane.receiveShadow = true;
-    scene.add(shadowPlane);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFShadowMap;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -78,6 +72,7 @@ if (animationStage && stops.length) {
     pageLight.style.setProperty('--page-darkness', pageDarkness);
     document.body.append(pageLight);
     const pageShadows = createPageShadows();
+    const imageReveals = createImageReveals(scene);
 
     const orbit = { phase: 0 };
     // Tween the orbit's centre and dimensions, rather than scrubbing its position.
@@ -93,11 +88,28 @@ if (animationStage && stops.length) {
     const lightOffset = new THREE.Vector3();
     const fillOffset = new THREE.Vector3();
     let lanternModel;
+    let dragControl;
+    let dragging = false;
+    let returnMotion;
+    const dragPosition = { x: 0, y: 0, blend: 0 };
+    // Higher stiffness follows faster; lower damping adds more bounce.
+    const dragSpring = createDragSpring(220, 22);
+    let springTime = performance.now();
 
     const render = () => {
+      const now = performance.now();
+      if (dragging || dragPosition.blend > 0) {
+        const point = dragSpring.step((now - springTime) / 1000);
+        dragPosition.x = point.x;
+        dragPosition.y = point.y;
+      }
+      springTime = now;
       const depth = Math.sin(orbit.phase);
-      const x = pose.x + Math.cos(orbit.phase) * pose.radiusX;
-      const y = pose.y - depth * pose.radiusY;
+      const orbitX = pose.x + Math.cos(orbit.phase) * pose.radiusX;
+      const orbitY = pose.y - depth * pose.radiusY;
+      const x = THREE.MathUtils.lerp(orbitX, dragPosition.x, dragPosition.blend);
+      const y = THREE.MathUtils.lerp(orbitY, dragPosition.y + window.scrollY, dragPosition.blend);
+      dragControl?.update(x, y - window.scrollY, pose.size, Boolean(lanternModel));
       lantern.position.set(x - width / 2, height / 2 - (y - window.scrollY), 0);
       lantern.rotation.set(Math.sin(orbit.phase) * 0.08, 0.45 + Math.sin(orbit.phase) * 0.7, Math.sin(orbit.phase) * 0.12);
       lantern.scale.setScalar(pose.size);
@@ -118,10 +130,9 @@ if (animationStage && stops.length) {
       pageLight.style.setProperty('--light-y', `${y - window.scrollY + size * 0.15}px`);
       pageLight.style.setProperty('--light-radius', `${Math.min(lanternLightRadius, width * 0.9) * (0.99 + flicker * 0.01)}px`);
       pageShadows.update(x, y + size * 0.15, Math.min(lanternLightRadius, width * 0.9));
+      imageReveals.update(x, y + size * 0.15, gsap.ticker.time, width, height);
       fill.target.position.copy(lantern.position);
       fill.position.copy(lantern.position).add(fillOffset.set(-size * 3, -size, size * 2));
-      shadowPlane.position.set(lantern.position.x, lantern.position.y - size * 0.4, -size * 1.5);
-      shadowPlane.scale.set(size * 6, size * 6, 1);
       // Keep the lantern above the text and images throughout its orbit.
       animationStage.style.zIndex = '3';
       renderer.render(scene, camera);
@@ -145,7 +156,7 @@ if (animationStage && stops.length) {
     };
 
     const selectStop = (immediate = false) => {
-      if (!bounds.length) return;
+      if (!bounds.length || dragging) return;
       const focus = window.scrollY + height * 0.4;
       const distance = (index) => Math.abs(bounds[index].y - focus);
       const maxScroll = Math.max(0, document.documentElement.scrollHeight - height);
@@ -176,6 +187,7 @@ if (animationStage && stops.length) {
     const measure = () => {
       if (disposed) return;
       pageShadows.measure();
+      imageReveals.measure();
       width = document.documentElement.clientWidth;
       height = window.innerHeight;
       camera.left = -width / 2;
@@ -208,13 +220,37 @@ if (animationStage && stops.length) {
         };
       });
       if (activeIndex < 0) selectStop(true);
-      else {
+      else if (!dragging) {
         // Keep an in-flight trip moving to its new responsive destination.
         goToStop(activeIndex, !travel?.isActive());
         selectStop();
       }
     };
 
+    dragControl = createLanternDrag({
+      onStart(point) {
+        returnMotion?.kill();
+        travel?.kill();
+        dragging = true;
+        dragSpring.reset(point);
+        springTime = performance.now();
+        Object.assign(dragPosition, point, { blend: 1 });
+        render();
+      },
+      onMove(point) {
+        dragSpring.aim(point);
+        render();
+      },
+      onEnd() {
+        if (disposed) return;
+        dragging = false;
+        selectStop();
+        if (activeIndex >= 0) goToStop(activeIndex);
+        returnMotion = gsap.to(dragPosition, {
+          blend: 0, duration: 1, ease: 'power2.inOut', onUpdate: render,
+        });
+      },
+    });
     loadLantern().then((model) => {
       if (disposed) disposeLantern(model);
       else {
@@ -240,6 +276,8 @@ if (animationStage && stops.length) {
       import.meta.hot.dispose(() => {
         disposed = true;
         travel?.kill();
+        returnMotion?.kill();
+        dragControl.dispose();
         rotation.kill();
         if (scrollFrame !== undefined) cancelAnimationFrame(scrollFrame);
         resizeObserver.disconnect();
@@ -248,13 +286,12 @@ if (animationStage && stops.length) {
         window.removeEventListener('load', measure);
         disposeLantern(lantern);
         reflections.dispose();
-        shadowGeometry.dispose();
-        shadowMaterial.dispose();
         light.shadow.dispose();
         renderer.dispose();
         animationStage.replaceChildren();
         pageLight.remove();
         pageShadows.dispose();
+        imageReveals.dispose();
       });
     }
   }
