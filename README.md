@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-Open the local URL printed in the terminal to see the cube automatically orbit the main title, alternating in front of and behind the text. Changes to the files update the browser while the server is running. Press Ctrl+C in the terminal to stop it.
+Open the local URL printed in the terminal to see the cube orbit the title. As you scroll, it travels to the nearest section title and orbits that heading. Each trip finishes even if you stop scrolling. Scroll up to return to earlier headings. Changes to the files update the browser while the server is running. Press Ctrl+C in the terminal to stop it.
 
 ## Change things
 
@@ -21,7 +21,7 @@ Open the local URL printed in the terminal to see the cube automatically orbit t
 
 The example photos are from Unsplash. Replace their image links and credits with our own project images when they’re ready.
 
-`#animation-stage` is a transparent overlay inside `.intro-heading`. The title uses CSS layer 2; the cube's canvas switches between layers 1 and 3 during its orbit. This switches the entire cube's layer rather than intersecting individual letters in 3D. Its orbit resizes with the heading.
+`#animation-stage` is a transparent fixed overlay. All `main h1` and `main h2` headings are destinations. Scroll selects the heading nearest 40% down the viewport, with a small margin to prevent flickering between destinations. GSAP completes each move independently of further scrolling. Edit `travelDuration`, `orbitDuration` and `titleClearance` in `script.js` to tune the motion. The titles and images use CSS layer 2; the cube switches between layers 1 and 3. This switches the entire cube's layer rather than intersecting individual letters in 3D. Heading positions are measured again when the layout resizes.
 
 ## Build
 
