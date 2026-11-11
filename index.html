@@ -3,7 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    html::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: #000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 450ms ease;
+    }
+    html.is-loading { overflow: hidden; }
+    html.is-loading::before { opacity: 1; pointer-events: auto; }
+    html.is-loading body { visibility: hidden; }
+  </style>
   <script>
+    document.documentElement.classList.add('is-loading');
     history.scrollRestoration = 'manual';
     if (performance.getEntriesByType('navigation')[0]?.type === 'reload') {
       if (location.hash) history.replaceState(history.state, '', location.pathname + location.search);
@@ -16,7 +32,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
-  <script type="module" src="./script.js"></script>
+  <script type="module" src="./script.js" onerror="document.documentElement.classList.remove('is-loading')"></script>
 </head>
 <body id="top">
   <div class="animation-stage" id="animation-stage" aria-hidden="true"></div>

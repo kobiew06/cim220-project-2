@@ -28,6 +28,10 @@ const entranceLanternScale = 1.6;
 const lanternLightRadius = 420;
 const pageDarkness = 0.62;
 
+const revealPage = () => requestAnimationFrame(() => {
+  document.documentElement.classList.remove('is-loading');
+});
+
 if (animationStage && stops.length) {
   let renderer;
   try {
@@ -301,7 +305,7 @@ if (animationStage && stops.length) {
         });
       },
     });
-    loadLantern().then((model) => {
+    const lanternLoaded = loadLantern().then((model) => {
       if (disposed) disposeLantern(model);
       else {
         lantern.add(model);
@@ -310,6 +314,7 @@ if (animationStage && stops.length) {
         render();
       }
     }).catch((error) => console.error('The lantern model could not load.', error));
+    Promise.allSettled([caveEntrance.loaded, lanternLoaded]).then(revealPage);
     measure();
     const rotation = gsap.to(orbit, {
       phase: Math.PI * 2, duration: orbitDuration, repeat: -1, ease: 'none',
@@ -354,5 +359,5 @@ if (animationStage && stops.length) {
         for (const property of ['position', 'top', 'bottom', 'height']) animationStage.style.removeProperty(property);
       });
     }
-  }
-}
+  } else revealPage();
+} else revealPage();

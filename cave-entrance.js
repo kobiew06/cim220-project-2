@@ -90,7 +90,7 @@ export function createCaveEntrance(onReady) {
     });
   }
 
-  new GLTFLoader().loadAsync(caveUrl).then(({ scene: model }) => {
+  const loaded = new GLTFLoader().loadAsync(caveUrl).then(({ scene: model }) => {
     if (disposed) {
       disposeModel(model);
       return;
@@ -127,6 +127,7 @@ export function createCaveEntrance(onReady) {
   }).catch((error) => console.warn('The cave model could not load.', error));
 
   return {
+    loaded,
     getPosition() {
       if (!ready) return null;
       // Use the entrance's stable scroll length even when mobile browser bars move.
