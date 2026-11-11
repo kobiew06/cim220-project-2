@@ -2,6 +2,10 @@
 
 This is our project site, built with HTML, CSS, JavaScript, Three.js and GSAP. Vite runs the local development server and builds the website.
 
+## Links
+
+- [CIM220 Project 2 Documentation](https://docs.google.com/document/d/1Tbfb3tGZK9Adgww43f8-259KkZWe2DzW6KcXMTVv4PE/edit?tab=t.0)
+
 ## Open it
 
 Install Node.js LTS, then open this folder in WebStorm. In its terminal, run:
