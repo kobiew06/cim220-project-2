@@ -104,11 +104,13 @@ if (animationStage && stops.length) {
     const fillOffset = new THREE.Vector3();
     let lanternModel;
     let triedImageDrag = false;
+    let imageRunwayReleased = false;
     let firstImageBottom = Infinity;
     let firstImageLeft = 0;
     const hintHover = { blend: 0 };
     let hintTravel;
     const introOffset = () => intro.getBoundingClientRect().top - introRunway.getBoundingClientRect().top;
+    if (firstImageIndex >= 0) introRunway.style.setProperty('--intro-pin-distance', '960px');
     let dragControl;
     let dragging = false;
     let returnMotion;
@@ -161,6 +163,12 @@ if (animationStage && stops.length) {
       const firstImageY = firstImageBottom + pinnedOffset - scroll;
       const hideHint = !lanternModel || Boolean(entrance) || triedImageDrag
         || firstImageY < height * 0.15 || firstImageY > height;
+      if (dragging && !hideHint && !imageRunwayReleased) {
+        // Keep the distance already scrolled so the image stays put at pickup.
+        const usedDistance = Math.max(0, Math.ceil(pinnedOffset));
+        introRunway.style.setProperty('--intro-pin-distance', `${usedDistance}px`);
+        imageRunwayReleased = true;
+      }
       if (dragHint.hidden !== hideHint) {
         dragHint.hidden = hideHint;
         hintTravel?.kill();
@@ -262,7 +270,6 @@ if (animationStage && stops.length) {
       const firstImageElement = stops[firstImageIndex];
       if (firstImageElement) {
         const imageBottomInIntro = firstImageElement.getBoundingClientRect().bottom - intro.getBoundingClientRect().top;
-        introRunway.style.setProperty('--intro-pin-distance', '960px');
         intro.style.setProperty('--intro-pin-top', `${height * 0.85 - imageBottomInIntro}px`);
       }
       const pinnedOffset = introOffset();
