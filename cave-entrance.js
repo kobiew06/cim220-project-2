@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import caveUrl from './assets/cave.glb?url';
+import { caveRevealStart, caveRevealEnd } from './scroll-mode.js';
 
 export function createCaveEntrance(onReady) {
   const section = document.querySelector('.cave-entrance');
@@ -9,19 +10,28 @@ export function createCaveEntrance(onReady) {
   const controls = instructions.parentElement;
   const project = document.querySelector('#project');
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color('#252d31');
-  scene.fog = new THREE.FogExp2(scene.background, 0.033);
-  const outsideColor = scene.background.clone();
-  const insideColor = new THREE.Color('#0a0a08');
+  scene.background = new THREE.Color(0x000000);
+  scene.fog = new THREE.FogExp2(0x000000, 0.033);
   const camera = new THREE.PerspectiveCamera(47, 1, 0.08, 85);
   const sky = new THREE.HemisphereLight(0xa1c0d4, 0x51412c, 1.35);
   const daylight = new THREE.DirectionalLight(0xcbdaf1, 2.4);
-  daylight.position.set(-9, 14, -20);
+  daylight.position.set(-14, 12, 5);
   const torch = new THREE.PointLight(0xffa34c, 16, 16);
   const ray = new THREE.Vector3();
+  const lookAhead = new THREE.Vector3();
+  // The scan starts on a sloped trail that descends into a narrow tunnel.
+  const passage = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-11.65, 4.85, 0),
+    new THREE.Vector3(-8.7, 1.3, 0.75),
+    new THREE.Vector3(-6, 0.2, 0.5),
+    new THREE.Vector3(-3, -0.8, 0.45),
+    new THREE.Vector3(0, -1.45, 0.65),
+    new THREE.Vector3(3.5, -1.8, 0.75),
+    new THREE.Vector3(8.4, -2, 1.1),
+    new THREE.Vector3(12.5, -2.15, 1.1),
+  ], false, 'centripetal');
   scene.add(sky, daylight, torch);
 
-  const stone = new THREE.MeshStandardMaterial({ color: 0x68645a, roughness: 1, side: THREE.DoubleSide });
   const ground = new THREE.MeshStandardMaterial({ color: 0x443f34, roughness: 1 });
   // Fade daylight below the arch and deeper into the chamber. The lantern's
   // point light is evaluated separately, so it can still reveal those surfaces.
@@ -32,11 +42,9 @@ export function createCaveEntrance(onReady) {
     );
     shader.fragmentShader = 'varying vec3 cavePosition;\n' + shader.fragmentShader.replace(
       '#include <lights_fragment_begin>',
-      `float depthInside = smoothstep(-24.0, -14.0, cavePosition.z);
-      float chamber = depthInside
-        * (1.0 - smoothstep(mix(2.0, 8.0, depthInside), mix(6.5, 13.0, depthInside), abs(cavePosition.x)))
-        * (1.0 - smoothstep(mix(1.5, 7.5, depthInside), mix(5.5, 12.0, depthInside), cavePosition.y));
-      float daylightExposure = mix(1.0, 0.09, chamber);
+      `float chamber = smoothstep(-1.5, 5.0, cavePosition.x)
+        * (1.0 - smoothstep(0.0, 3.2, cavePosition.y));
+      float daylightExposure = mix(1.0, 0.12, chamber);
       ${THREE.ShaderChunk.lights_fragment_begin
         .replace('getDirectionalLightInfo( directionalLight, directLight );',
           'getDirectionalLightInfo( directionalLight, directLight ); directLight.color *= daylightExposure;')
@@ -47,12 +55,18 @@ export function createCaveEntrance(onReady) {
       'mix( gl_FragColor.rgb, fogColor * daylightExposure, fogFactor )',
     ));
   }
-  stone.onBeforeCompile = shadeCaveInterior;
   ground.onBeforeCompile = shadeCaveInterior;
   const foreground = new THREE.Mesh(new THREE.PlaneGeometry(180, 180), ground);
   foreground.rotation.x = -Math.PI / 2;
-  foreground.position.y = -2.02;
-  scene.add(foreground);
+  foreground.position.y = -4.3;
+  // The scan is open at its far end. Block the lit ground behind that gap.
+  const tunnelBackdrop = new THREE.Mesh(
+    new THREE.PlaneGeometry(24, 16),
+    new THREE.MeshBasicMaterial({ color: 0x000000, fog: false }),
+  );
+  tunnelBackdrop.position.set(18, 0, 0);
+  tunnelBackdrop.rotation.y = -Math.PI / 2;
+  scene.add(foreground, tunnelBackdrop);
 
   let renderer;
   let disposed = false;
@@ -60,9 +74,21 @@ export function createCaveEntrance(onReady) {
   let pickedUp = false;
   let lastWidth;
   let lastHeight;
-  const disposeModel = (model) => model.traverse((object) => {
-    if (object.isMesh) object.geometry.dispose();
-  });
+  function disposeModel(model) {
+    const materials = new Set();
+    const textures = new Set();
+    model.traverse((object) => {
+      if (!object.isMesh) return;
+      object.geometry.dispose();
+      materials.add(object.material);
+      if (object.material.map) textures.add(object.material.map);
+    });
+    materials.forEach((material) => material.dispose());
+    textures.forEach((texture) => {
+      texture.dispose();
+      texture.image?.close?.();
+    });
+  }
 
   new GLTFLoader().loadAsync(caveUrl).then(({ scene: model }) => {
     if (disposed) {
@@ -76,13 +102,14 @@ export function createCaveEntrance(onReady) {
       console.warn('The cave entrance could not start.', error);
       return;
     }
-    const materials = new Set();
+    model.scale.setScalar(1 / 30);
     model.traverse((object) => {
       if (!object.isMesh) return;
-      materials.add(object.material);
-      object.material = object.name === 'Ground' ? ground : stone;
+      object.material.side = THREE.DoubleSide;
+      object.material.roughness = 1;
+      object.material.metalness = 0;
+      object.material.onBeforeCompile = shadeCaveInterior;
     });
-    materials.forEach((material) => material.dispose());
     scene.add(model);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -105,14 +132,12 @@ export function createCaveEntrance(onReady) {
       // Use the entrance's stable scroll length even when mobile browser bars move.
       const length = section.offsetHeight;
       const distance = window.scrollY / length;
-      const revealStart = 0.56;
-      const join = 0.88;
-      const handoff = THREE.MathUtils.smoothstep(distance, revealStart, join);
+      const handoff = THREE.MathUtils.smoothstep(distance, caveRevealStart, caveRevealEnd);
       const approaching = handoff > 0 && handoff < 1;
       // Cancel the document's vertical motion during the approach. The title
       // grows in place and meets its normal document position at the join.
-      const remaining = (join - distance) * length;
-      const offset = approaching ? -remaining * (1 - THREE.MathUtils.smoothstep(distance, 0.82, join)) : 0;
+      const remaining = (caveRevealEnd - distance) * length;
+      const offset = approaching ? -remaining * (1 - THREE.MathUtils.smoothstep(distance, 0.82, caveRevealEnd)) : 0;
       const depth = approaching ? -1800 * (1 - handoff) : 0;
       project.style.setProperty('--cave-title-transform', approaching
         ? `translateY(${offset}px) perspective(850px) translateZ(${depth}px)`
@@ -147,23 +172,21 @@ export function createCaveEntrance(onReady) {
         lastHeight = height;
       }
 
-      // The passage opens toward negative Z, slightly below the exterior eye line.
-      camera.position.set(
-        THREE.MathUtils.lerp(-0.45, -0.2, progress),
-        THREE.MathUtils.lerp(1.2, -0.65, THREE.MathUtils.smoothstep(progress, 0, 0.55)),
-        THREE.MathUtils.lerp(camera.aspect < 0.85 ? -46 : -37, -8, progress),
-      );
-      camera.lookAt(-0.2, -0.65, 1);
+      const travel = progress * 0.88;
+      passage.getPointAt(travel, camera.position);
+      passage.getPointAt(Math.min(1, travel + 0.24), lookAhead);
+      const exteriorFraming = 1 - THREE.MathUtils.smoothstep(progress, 0, 0.32);
+      lookAhead.y += 1.75 * exteriorFraming;
+      lookAhead.z -= 0.75 * exteriorFraming;
+      camera.lookAt(lookAhead);
       camera.updateMatrixWorld();
       const darkness = THREE.MathUtils.smoothstep(progress, 0.45, 0.95);
       sky.intensity = THREE.MathUtils.lerp(1.35, 0.045, darkness);
       daylight.intensity = 2.4 * (1 - darkness);
-      scene.background.copy(outsideColor).lerp(insideColor, darkness);
-      scene.fog.color.copy(scene.background);
       ray.set(x / width * 2 - 1, 1 - y / height * 2, 0.5).unproject(camera)
         .sub(camera.position).normalize();
-      torch.position.copy(camera.position).addScaledVector(ray, THREE.MathUtils.lerp(8, 2.8, progress));
-      torch.intensity = (pickedUp ? 40 : 12) * (0.97 + Math.sin(performance.now() / 110) * 0.03);
+      torch.position.copy(camera.position).addScaledVector(ray, THREE.MathUtils.lerp(4.4, 1.7, progress));
+      torch.intensity = (pickedUp ? 36 : 14) * (0.97 + Math.sin(performance.now() / 110) * 0.03);
       renderer.render(scene, camera);
     },
     dispose() {
@@ -175,8 +198,6 @@ export function createCaveEntrance(onReady) {
       renderer?.domElement.remove();
       renderer?.dispose();
       disposeModel(scene);
-      stone.dispose();
-      ground.dispose();
     },
   };
 }

@@ -3,6 +3,33 @@ import { gsap } from 'gsap';
 const nav = document.querySelector('.site-header nav');
 
 if (nav) {
+  const header = nav.closest('.site-header');
+  const toggle = header.querySelector('.nav-toggle');
+  const isOpen = () => toggle.getAttribute('aria-expanded') === 'true';
+  const setMenuOpen = (open, restoreFocus = false) => {
+    toggle.setAttribute('aria-expanded', String(open));
+    toggle.setAttribute('aria-label', open ? 'Close navigation' : 'Open navigation');
+    if (restoreFocus) toggle.focus({ preventScroll: true });
+  };
+  const toggleMenu = () => setMenuOpen(!isOpen());
+  const closeOnSelection = (event) => {
+    if (isOpen() && event.target.closest('a')) setMenuOpen(false, nav.contains(document.activeElement));
+  };
+  const closeOutside = (event) => {
+    if (isOpen() && !header.contains(event.target)) setMenuOpen(false);
+  };
+  const closeOnEscape = (event) => {
+    if (event.key !== 'Escape' || !isOpen() || event.defaultPrevented) return;
+    event.preventDefault();
+    setMenuOpen(false, true);
+  };
+  header.classList.add('has-mobile-menu');
+  toggle.addEventListener('click', toggleMenu);
+  nav.addEventListener('click', closeOnSelection);
+  document.addEventListener('pointerdown', closeOutside);
+  document.addEventListener('focusin', closeOutside);
+  document.addEventListener('keydown', closeOnEscape);
+
   const links = [...nav.querySelectorAll('a[href^="#"]')];
   const sections = links.map((link) => document.getElementById(link.hash.slice(1)));
   // Each letter rolls independently so the flip travels across the label.
@@ -123,6 +150,7 @@ if (nav) {
 
   const measure = () => {
     if (disposed) return;
+    if (isOpen() && !toggle.getClientRects().length) setMenuOpen(false);
     const navRect = nav.getBoundingClientRect();
     linkBounds = links.map((link) => {
       const rect = link.getBoundingClientRect();
@@ -159,6 +187,13 @@ if (nav) {
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', measure);
       window.removeEventListener('load', measure);
+      toggle.removeEventListener('click', toggleMenu);
+      nav.removeEventListener('click', closeOnSelection);
+      document.removeEventListener('pointerdown', closeOutside);
+      document.removeEventListener('focusin', closeOutside);
+      document.removeEventListener('keydown', closeOnEscape);
+      setMenuOpen(false);
+      header.classList.remove('has-mobile-menu');
       links.forEach((link) => link.removeAttribute('aria-current'));
       indicator.remove();
       hoverEffects.forEach((cleanup) => cleanup());

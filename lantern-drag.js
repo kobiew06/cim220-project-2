@@ -1,5 +1,3 @@
-import { nativeScrolling } from './scroll-mode.js';
-
 // Only this small hit area intercepts input; the rest of the page scrolls normally.
 export function createLanternDrag({ onStart, onMove, onEnd }) {
   const handle = document.createElement('button');
@@ -9,13 +7,12 @@ export function createLanternDrag({ onStart, onMove, onEnd }) {
   handle.title = 'Drag the lantern to explore';
   handle.setAttribute('aria-label', 'Move lantern. Drag, or press Enter and use arrow keys. Press Enter or Escape to release.');
   handle.setAttribute('aria-pressed', 'false');
-  handle.setAttribute('data-lenis-prevent', '');
+  handle.setAttribute('data-lenis-prevent-touch', '');
   document.body.append(handle);
   let pointerId = null;
   let keyboard = false;
   let centre = { x: 0, y: 0 };
   let offset = { x: 0, y: 0 };
-  let allowWheel = false;
 
   const clamp = (point) => ({
     x: Math.max(24, Math.min(document.documentElement.clientWidth - 24, point.x)),
@@ -75,9 +72,6 @@ export function createLanternDrag({ onStart, onMove, onEnd }) {
     centre = clamp({ x: centre.x + steps[event.key][0] * step, y: centre.y + steps[event.key][1] * step });
     onMove(centre);
   };
-  const onWheel = (event) => {
-    if (!allowWheel && (pointerId !== null || keyboard)) event.preventDefault();
-  };
   handle.addEventListener('pointerdown', onDown);
   handle.addEventListener('pointermove', onPointerMove);
   handle.addEventListener('pointerup', onPointerEnd);
@@ -85,25 +79,19 @@ export function createLanternDrag({ onStart, onMove, onEnd }) {
   handle.addEventListener('lostpointercapture', onPointerEnd);
   handle.addEventListener('keydown', onKey);
   handle.addEventListener('blur', finish);
-  handle.addEventListener('wheel', onWheel, { passive: false });
   window.addEventListener('blur', finish);
 
   return {
-    update(x, y, size, loaded, scrollWhileHeld) {
+    update(x, y, size, loaded, pageOffset) {
       // Keep the held pointer/keyboard target independent of the visual spring.
       if (pointerId === null && !keyboard) centre = { x, y };
       const width = Math.max(64, size * 1.2);
       const height = Math.max(80, size * 1.9);
       handle.hidden = !loaded;
-      if (allowWheel !== scrollWhileHeld) {
-        allowWheel = scrollWhileHeld;
-        handle.toggleAttribute('data-lenis-prevent', !allowWheel);
-      }
       handle.style.width = `${width}px`;
       handle.style.height = `${height}px`;
-      handle.style.position = nativeScrolling.matches ? 'absolute' : 'fixed';
-      const pageOffset = nativeScrolling.matches ? window.scrollY : 0;
-      handle.style.transform = `translate3d(${x - width / 2}px, ${y + pageOffset - height / 2}px, 0)`;
+      handle.style.position = pageOffset === null ? 'fixed' : 'absolute';
+      handle.style.transform = `translate3d(${x - width / 2}px, ${y + (pageOffset ?? 0) - height / 2}px, 0)`;
     },
     dispose() {
       window.removeEventListener('blur', finish);

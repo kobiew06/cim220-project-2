@@ -7,7 +7,7 @@ import { createImageReveals } from './image-reveal.js';
 import { createLanternDrag } from './lantern-drag.js';
 import { createDragSpring } from './drag-spring.js';
 import { createCaveEntrance } from './cave-entrance.js';
-import { nativeScrolling, getRenderWindow } from './scroll-mode.js';
+import { mobileLayout, getRenderWindow } from './scroll-mode.js';
 import './scrolling.js';
 import './navigation.js';
 import './typography.js';
@@ -23,6 +23,7 @@ const orbitDuration = 10;
 const stopSwitchMargin = 60;
 const lightIntensity = 3.5;
 const lanternSize = 48;
+const entranceLanternScale = 1.6;
 // Page illumination: radius in pixels and darkness outside the lantern's reach.
 const lanternLightRadius = 420;
 const pageDarkness = 0.62;
@@ -104,7 +105,12 @@ if (animationStage && stops.length) {
 
     const render = () => {
       if (!width || !height) return;
-      const viewport = getRenderWindow(window.scrollY, height, pageHeight, nativeScrolling.matches);
+      const scroll = window.scrollY;
+      const entrance = caveEntrance.getPosition();
+      // During the entrance the lantern is held in screen space. A fixed layer
+      // keeps native scrolling from carrying it away between rendered frames.
+      const documentAnchored = mobileLayout.matches && !entrance;
+      const viewport = getRenderWindow(scroll, height, pageHeight, documentAnchored);
       const origin = viewport.origin;
       if (renderHeight !== viewport.height) {
         renderHeight = viewport.height;
@@ -113,8 +119,8 @@ if (animationStage && stops.length) {
         camera.updateProjectionMatrix();
         renderer.setSize(width, renderHeight);
       }
-      const layerPosition = nativeScrolling.matches ? 'absolute' : 'fixed';
-      const layerTop = nativeScrolling.matches ? `${origin}px` : '0px';
+      const layerPosition = documentAnchored ? 'absolute' : 'fixed';
+      const layerTop = documentAnchored ? `${origin}px` : '0px';
       for (const layer of [animationStage, pageLight]) {
         layer.style.position = layerPosition;
         layer.style.top = layerTop;
@@ -129,23 +135,23 @@ if (animationStage && stops.length) {
       }
       springTime = now;
       const depth = Math.sin(orbit.phase);
-      const entrance = caveEntrance.getPosition();
       const handoff = entrance?.handoff ?? 1;
+      const size = pose.size * THREE.MathUtils.lerp(entranceLanternScale, 1, handoff);
       const orbitX = THREE.MathUtils.lerp(width * 0.64, pose.x + Math.cos(orbit.phase) * pose.radiusX, handoff);
       const orbitY = THREE.MathUtils.lerp(
-        window.scrollY + height * 0.65,
+        scroll + height * 0.65,
         pose.y - depth * pose.radiusY,
         handoff,
       );
       const x = THREE.MathUtils.lerp(orbitX, dragPosition.x, dragPosition.blend);
-      const y = THREE.MathUtils.lerp(orbitY, dragPosition.y + window.scrollY, dragPosition.blend);
-      dragControl?.update(x, y - window.scrollY, pose.size, Boolean(lanternModel), handoff < 1);
+      const y = THREE.MathUtils.lerp(orbitY, dragPosition.y + scroll, dragPosition.blend);
+      const screenY = y - scroll;
+      dragControl?.update(x, screenY, size, Boolean(lanternModel), documentAnchored ? scroll : null);
       pageLight.style.setProperty('--page-light-strength', handoff);
-      if (entrance) caveEntrance.render(entrance.progress, x, y - window.scrollY, Boolean(lanternModel));
+      if (entrance) caveEntrance.render(entrance.progress, x, screenY, Boolean(lanternModel));
       lantern.position.set(x - width / 2, renderHeight / 2 - (y - origin), 0);
       lantern.rotation.set(Math.sin(orbit.phase) * 0.08, 0.45 + Math.sin(orbit.phase) * 0.7, Math.sin(orbit.phase) * 0.12);
-      lantern.scale.setScalar(pose.size);
-      const size = pose.size;
+      lantern.scale.setScalar(size);
       if (lanternModel) updateLanternFire(lanternModel, gsap.ticker.time, size);
       // Keep the lighting rig with the lantern as it travels between headings.
       light.target.position.copy(lantern.position);
@@ -222,7 +228,7 @@ if (animationStage && stops.length) {
       imageReveals.measure();
       const measuredWidth = document.documentElement.clientWidth;
       // Browser chrome changing height must not constantly resize the canvas.
-      if (!height || !nativeScrolling.matches || width !== measuredWidth) height = window.innerHeight;
+      if (!height || !mobileLayout.matches || width !== measuredWidth) height = window.innerHeight;
       width = measuredWidth;
       mainTop = document.querySelector('main').getBoundingClientRect().top + window.scrollY;
       pageHeight = document.querySelector('.site-footer').getBoundingClientRect().bottom + window.scrollY;
@@ -230,7 +236,7 @@ if (animationStage && stops.length) {
       camera.right = width / 2;
       camera.updateProjectionMatrix();
       renderHeight = 0;
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, nativeScrolling.matches ? 1.25 : 2));
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, mobileLayout.matches ? 1.25 : 2));
       // One responsive size for every stop; scrolling never changes it.
       const size = Math.min(lanternSize, width * 0.12);
       const previousBounds = bounds;
@@ -314,10 +320,10 @@ if (animationStage && stops.length) {
     stops.forEach((stop) => resizeObserver.observe(stop));
     window.addEventListener('scroll', onScroll, { passive: true });
     const onResize = () => {
-      if (!nativeScrolling.matches || document.documentElement.clientWidth !== width) measure();
+      if (!mobileLayout.matches || document.documentElement.clientWidth !== width) measure();
     };
     window.addEventListener('resize', onResize);
-    nativeScrolling.addEventListener('change', measure);
+    mobileLayout.addEventListener('change', measure);
     window.addEventListener('load', measure);
     document.fonts.ready.then(measure);
 
@@ -335,7 +341,7 @@ if (animationStage && stops.length) {
         resizeObserver.disconnect();
         window.removeEventListener('scroll', onScroll);
         window.removeEventListener('resize', onResize);
-        nativeScrolling.removeEventListener('change', measure);
+        mobileLayout.removeEventListener('change', measure);
         window.removeEventListener('load', measure);
         disposeLantern(lantern);
         reflections.dispose();

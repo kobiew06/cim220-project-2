@@ -3,6 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>
+    history.scrollRestoration = 'manual';
+    if (performance.getEntriesByType('navigation')[0]?.type === 'reload') {
+      if (location.hash) history.replaceState(history.state, '', location.pathname + location.search);
+    }
+  </script>
 
   <title>The Allegory of the Cave: A Modern Interpretation | CIM220 Project 2</title>
   <meta name="description" content="Our project looks at how people can get stuck in things that feel normal.">
@@ -18,8 +24,13 @@
     <a class="site-name" href="#top" aria-label="The Allegory of the Cave — back to top">
       <span class="site-mark" aria-hidden="true"></span>
     </a>
-    <nav aria-label="Main navigation">
-      <a href="#project">Project</a>
+    <button class="nav-toggle" type="button" aria-label="Open navigation" aria-controls="main-navigation" aria-expanded="false">
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+    </button>
+    <nav id="main-navigation" aria-label="Main navigation" data-lenis-prevent-touch>
+      <a href="#top">Intro</a>
       <a href="#film">Film</a>
       <a href="#psychology">Psychology</a>
       <a href="#artwork">Artwork</a>
@@ -31,7 +42,7 @@
     <div class="cave-view">
       <div class="cave-controls">
         <p class="cave-instructions" aria-live="polite">Scroll to enter the cave</p>
-        <a href="#project">Enter cave <span aria-hidden="true">↓</span></a>
+        <a href="#project" hidden>Enter cave <span aria-hidden="true">↓</span></a>
       </div>
     </div>
   </section>
@@ -41,7 +52,7 @@
       <div class="intro-heading">
         <div class="intro-title">
           <p class="eyebrow">CIM220 · Project 2</p>
-          <h1>The Allegory of the Cave</h1>
+          <h1 tabindex="-1">The Allegory of the Cave</h1>
         </div>
         <p class="intro-copy">Our project looks at how people can get stuck in things that feel normal, such as work, habits or addiction. What happens when you stop and question the cycle?</p>
       </div>
@@ -121,6 +132,7 @@
 
   <footer class="site-footer">
     <span>The Allegory of the Cave · CIM220 Project 2</span>
+    <span><a href="https://sketchfab.com/3d-models/sea-cave-3-ce71dc2848984acfb11d8002a48a6043">Sea Cave 3 by b_nealie</a> · <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a> · Optimised for web</span>
   </footer>
 </body>
 </html>

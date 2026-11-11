@@ -11,16 +11,18 @@ npm install
 npm run dev
 ```
 
-Open the local URL printed in the terminal to start outside the cave. Grab the lantern to brighten the entrance, then scroll to move inside. On touch screens, release the lantern before swiping. The Enter cave link takes you straight to the project. Once inside, the lantern travels to the nearest title or image and orbits that stop. Each trip finishes even if you stop scrolling. Scroll up to return to earlier stops. Changes to the files update the browser while the server is running. Press Ctrl+C in the terminal to stop it.
+Open the local URL printed in the terminal to start outside the cave. Grab the lantern to brighten the entrance, then scroll to move inside. On touch screens, release the lantern before swiping. Once inside, the lantern travels to the nearest title or image and orbits that stop. Each trip finishes even if you stop scrolling. Scroll up to return to earlier stops. Changes to the files update the browser while the server is running. Press Ctrl+C in the terminal to stop it.
+
+To show the optional Enter cave link again, remove its `hidden` attribute in `index.html`. It plays the camera journey automatically.
 
 ## Change things
 
 - `index.html`: the page sections and text.
 - `styles.css`: colours and layout.
 - `script.js`: the Three.js scene, lantern, lighting and GSAP motion. Try changing the material's `color` or the animation's `duration`.
-- `cave-entrance.js`: the scroll-driven entrance camera and lighting. It uses `assets/cave.glb`, a simplified export of `assets/Cave/Cave.fbx` with web materials applied in Three.js.
+- `cave-entrance.js`: the scroll-driven entrance camera and lighting. It uses `assets/cave.glb`, a simplified export of [Sea Cave 3 by b_nealie](https://sketchfab.com/3d-models/sea-cave-3-ce71dc2848984acfb11d8002a48a6043) ([CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)) with four photo textures embedded at 2048 × 2048.
 - `navigation.js`: tracks the current section and slides one persistent underline between navigation links as you scroll.
-- `scrolling.js`: Lenis smooths desktop mouse-wheel scrolling and navigation jumps on GSAP's animation loop. Phones, coarse/touch pointers and windows below 768px use native scrolling with no Lenis instance. Adjust `lerp` (currently `0.12`) for a tighter response (higher) or a longer glide (lower).
+- `scrolling.js`: Lenis smooths desktop mouse-wheel scrolling, mobile touch scrolling and navigation jumps on GSAP's animation loop. Adjust `lerp` for the wheel response and `syncTouchLerp` for the glide after a swipe.
 
 The lantern has an animated warm key light, subtle torch flicker and a cool fill light. Adjust `lightIntensity` at the top of `script.js`. Its lighting follows it between stops. The lantern does not cast a silhouette onto the page; text and image shadows are handled separately by `page-shadows.js`.
 
