@@ -67,7 +67,7 @@ export function createImageReveals(scene) {
   let disposed = false;
   const measureEntry = (entry) => {
     const rect = entry.image.getBoundingClientRect();
-    entry.rect = { left: rect.left, top: rect.top + window.scrollY, width: rect.width, height: rect.height };
+    entry.rect = { left: rect.left, width: rect.width, height: rect.height };
     if (!entry.mesh || !rect.width || !rect.height) return;
     const uniforms = entry.mesh.material.uniforms;
     uniforms.uSize.value.set(rect.width, rect.height);
@@ -132,13 +132,14 @@ export function createImageReveals(scene) {
       for (const entry of entries) {
         if (!entry.mesh || !entry.rect) continue;
         const rect = entry.rect;
-        const top = rect.top - origin;
+        const documentTop = entry.image.getBoundingClientRect().top + window.scrollY;
+        const top = documentTop - origin;
         entry.mesh.visible = top + rect.height >= 0 && top <= height;
         if (!entry.mesh.visible) continue;
         entry.shadow.style.boxShadow = entry.image.style.getPropertyValue('--lantern-cast-shadow');
         entry.mesh.position.set(rect.left + rect.width / 2 - width / 2, height / 2 - top - rect.height / 2, -300);
         const uniforms = entry.mesh.material.uniforms;
-        uniforms.uLight.value.set(lightX - rect.left, rect.height - (lightY - rect.top));
+        uniforms.uLight.value.set(lightX - rect.left, rect.height - (lightY - documentTop));
         uniforms.uTime.value = time;
       }
     },

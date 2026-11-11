@@ -144,12 +144,18 @@ main { width: 100%; }
 }
 .cave-controls a:hover { background: #392a17; }
 .cave-entrance:not([hidden]) + main .intro {
-  position: relative;
   z-index: 2;
   opacity: var(--cave-page-reveal, 1);
 }
 .intro {
+  position: sticky;
+  top: var(--intro-pin-top, auto);
   padding: clamp(64px, 10vw, 112px) max(24px, calc((100% - var(--content-width)) / 2)) 62px;
+}
+.intro-runway::after {
+  content: '';
+  display: block;
+  height: var(--intro-pin-distance, 0px);
 }
 .intro-heading { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; padding: 48px 0 64px; }
 .intro-heading {
@@ -295,6 +301,35 @@ h2 { font-size: clamp(29px, 4.5vw, 42px); line-height: 1.06; letter-spacing: -.0
   display: block;
   width: 100%;
   height: 100%;
+}
+.lantern-drag-hint {
+  position: absolute;
+  width: 160px;
+  z-index: 6;
+  translate: 16px calc(-100% - 16px);
+  transform-origin: bottom left;
+  pointer-events: none;
+  color: var(--cream);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.lantern-drag-hint:not([hidden]) {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+.lantern-drag-hint img {
+  filter: brightness(0) invert(1);
+}
+.lantern-drag-hint:not([hidden]) { animation: drag-hint-appear 240ms ease-out both; }
+.lantern-drag-hint:not([hidden]) img { animation: drag-hint-sway 700ms ease-in-out infinite alternate; }
+@keyframes drag-hint-appear {
+  from { opacity: 0; transform: scale(.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes drag-hint-sway {
+  from { transform: translateX(-22px) rotate(-13deg); }
+  to { transform: translateX(22px) rotate(13deg); }
 }
 .lantern-page-light {
   position: fixed;

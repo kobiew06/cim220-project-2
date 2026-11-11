@@ -3,11 +3,11 @@ export function createPageShadows() {
   const targets = [...document.querySelectorAll('main h1, main h2, main p, main li, main img')].map((element) => {
     const type = element.tagName === 'IMG' ? 'image' : 'text';
     element.classList.add(`lantern-shadow-${type}`);
-    return { element, type, x: 0, y: 0, halfWidth: 0, halfHeight: 0 };
+    return { element, type, inIntro: Boolean(element.closest('.intro')), x: 0, y: 0, halfWidth: 0, halfHeight: 0 };
   });
 
   return {
-    measure() {
+    measure(introOffset) {
       for (const target of targets) {
         let rect;
         if (target.type === 'text') {
@@ -20,15 +20,15 @@ export function createPageShadows() {
           rect = target.element.getBoundingClientRect();
         }
         target.x = rect.left + rect.width / 2;
-        target.y = rect.top + window.scrollY + rect.height / 2;
+        target.y = rect.top + window.scrollY + rect.height / 2 - (target.inIntro ? introOffset : 0);
         target.halfWidth = rect.width / 2;
         target.halfHeight = rect.height / 2;
       }
     },
-    update(lightX, lightY, radius) {
+    update(lightX, lightY, radius, introOffset) {
       for (const target of targets) {
         const dx = target.x - lightX;
-        const dy = target.y - lightY;
+        const dy = target.y + (target.inIntro ? introOffset : 0) - lightY;
         // Distance to the nearest edge lets large images react when the
         // lantern reaches their edge, even if their centre is further away.
         const distance = Math.hypot(

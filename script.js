@@ -14,7 +14,11 @@ import './typography.js';
 
 const animationStage = document.querySelector('#animation-stage');
 const introHeading = document.querySelector('.intro-heading');
+const intro = document.querySelector('#project');
+const introRunway = document.querySelector('.intro-runway');
 const stops = [...document.querySelectorAll('main h1, main h2, main img')];
+const firstImageIndex = stops.findIndex((stop) => stop.matches('.hero-image img'));
+const dragHint = document.querySelector('.lantern-drag-hint');
 // Extra clearance around the text at the ends of the lantern's orbit.
 const titleClearance = 24;
 const travelDuration = 1.25;
@@ -85,7 +89,7 @@ if (animationStage && stops.length) {
     const orbit = { phase: 0 };
     // Tween the orbit's centre and dimensions, rather than scrubbing its position.
     // GSAP finishes this trip even when no more scroll events arrive.
-    const pose = { x: 0, y: 0, radiusX: 0, radiusY: 0, size: 1 };
+    const pose = { x: 0, y: 0, radiusX: 0, radiusY: 0, size: 1, introWeight: 0 };
     let bounds = [];
     let activeIndex = -1;
     let travel;
@@ -99,6 +103,12 @@ if (animationStage && stops.length) {
     const lightOffset = new THREE.Vector3();
     const fillOffset = new THREE.Vector3();
     let lanternModel;
+    let triedImageDrag = false;
+    let firstImageBottom = Infinity;
+    let firstImageLeft = 0;
+    const hintHover = { blend: 0 };
+    let hintTravel;
+    const introOffset = () => intro.getBoundingClientRect().top - introRunway.getBoundingClientRect().top;
     let dragControl;
     let dragging = false;
     let returnMotion;
@@ -110,6 +120,7 @@ if (animationStage && stops.length) {
     const render = () => {
       if (!width || !height) return;
       const scroll = window.scrollY;
+      const pinnedOffset = introOffset();
       const entrance = caveEntrance.getPosition();
       // During the entrance the lantern is held in screen space. A fixed layer
       // keeps native scrolling from carrying it away between rendered frames.
@@ -144,11 +155,26 @@ if (animationStage && stops.length) {
       const orbitX = THREE.MathUtils.lerp(width * 0.64, pose.x + Math.cos(orbit.phase) * pose.radiusX, handoff);
       const orbitY = THREE.MathUtils.lerp(
         scroll + height * 0.65,
-        pose.y - depth * pose.radiusY,
+        pose.y + pinnedOffset * pose.introWeight - depth * pose.radiusY,
         handoff,
       );
-      const x = THREE.MathUtils.lerp(orbitX, dragPosition.x, dragPosition.blend);
-      const y = THREE.MathUtils.lerp(orbitY, dragPosition.y + scroll, dragPosition.blend);
+      const firstImageY = firstImageBottom + pinnedOffset - scroll;
+      const hideHint = !lanternModel || Boolean(entrance) || triedImageDrag
+        || firstImageY < height * 0.15 || firstImageY > height;
+      if (dragHint.hidden !== hideHint) {
+        dragHint.hidden = hideHint;
+        hintTravel?.kill();
+        hintTravel = gsap.to(hintHover, {
+          blend: hideHint ? 0 : 1,
+          duration: travelDuration,
+          ease: 'power2.inOut',
+        });
+      }
+      if (!hideHint) dragHint.style.top = `${firstImageBottom + pinnedOffset}px`;
+      const hoverX = firstImageLeft + 96 + Math.cos(orbit.phase * 2) * 18;
+      const hoverY = Number.isFinite(firstImageBottom) ? firstImageBottom + pinnedOffset - 108 + depth * 8 : orbitY;
+      const x = THREE.MathUtils.lerp(THREE.MathUtils.lerp(orbitX, hoverX, hintHover.blend), dragPosition.x, dragPosition.blend);
+      const y = THREE.MathUtils.lerp(THREE.MathUtils.lerp(orbitY, hoverY, hintHover.blend), dragPosition.y + scroll, dragPosition.blend);
       const screenY = y - scroll;
       dragControl?.update(x, screenY, size, Boolean(lanternModel), documentAnchored ? scroll : null);
       pageLight.style.setProperty('--page-light-strength', handoff);
@@ -171,7 +197,7 @@ if (animationStage && stops.length) {
       pageLight.style.setProperty('--light-x', `${x}px`);
       pageLight.style.setProperty('--light-y', `${y - origin + size * 0.15}px`);
       pageLight.style.setProperty('--light-radius', `${Math.min(lanternLightRadius, width * 0.9) * (0.99 + flicker * 0.01)}px`);
-      pageShadows.update(x, y + size * 0.15, Math.min(lanternLightRadius, width * 0.9));
+      pageShadows.update(x, y + size * 0.15, Math.min(lanternLightRadius, width * 0.9), pinnedOffset);
       imageReveals.update(x, y + size * 0.15, gsap.ticker.time, width, renderHeight, origin);
       fill.target.position.copy(lantern.position);
       fill.position.copy(lantern.position).add(fillOffset.set(-size * 3, -size, size * 2));
@@ -199,7 +225,8 @@ if (animationStage && stops.length) {
     const selectStop = (immediate = false) => {
       if (!bounds.length || dragging) return;
       const focus = window.scrollY + height * 0.4;
-      const distance = (index) => Math.abs(bounds[index].y - focus);
+      const pinnedOffset = introOffset();
+      const distance = (index) => Math.abs(bounds[index].y + pinnedOffset * bounds[index].introWeight - focus);
       const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
       // Short final sections may never reach the viewport focus line. Select
       // endpoints explicitly and bypass the usual switching margin there.
@@ -228,12 +255,19 @@ if (animationStage && stops.length) {
       if (disposed) return;
       // Orbit targets and projected shadows use the heading's settled layout.
       introHeading.style.transform = 'none';
-      pageShadows.measure();
-      imageReveals.measure();
       const measuredWidth = document.documentElement.clientWidth;
       // Browser chrome changing height must not constantly resize the canvas.
       if (!height || !mobileLayout.matches || width !== measuredWidth) height = window.innerHeight;
       width = measuredWidth;
+      const firstImageElement = stops[firstImageIndex];
+      if (firstImageElement) {
+        const imageBottomInIntro = firstImageElement.getBoundingClientRect().bottom - intro.getBoundingClientRect().top;
+        introRunway.style.setProperty('--intro-pin-distance', '960px');
+        intro.style.setProperty('--intro-pin-top', `${height * 0.85 - imageBottomInIntro}px`);
+      }
+      const pinnedOffset = introOffset();
+      pageShadows.measure(pinnedOffset);
+      imageReveals.measure();
       mainTop = document.querySelector('main').getBoundingClientRect().top + window.scrollY;
       pageHeight = document.querySelector('.site-footer').getBoundingClientRect().bottom + window.scrollY;
       camera.left = -width / 2;
@@ -244,7 +278,7 @@ if (animationStage && stops.length) {
       // One responsive size for every stop; scrolling never changes it.
       const size = Math.min(lanternSize, width * 0.12);
       const previousBounds = bounds;
-      bounds = stops.map((stop) => {
+      bounds = stops.map((stop, index) => {
         const isImage = stop.tagName === 'IMG';
         let rect;
         if (isImage) rect = stop.getBoundingClientRect();
@@ -254,18 +288,25 @@ if (animationStage && stops.length) {
           range.selectNodeContents(stop);
           rect = range.getBoundingClientRect();
         }
+        const introWeight = intro.contains(stop) ? 1 : 0;
+        if (index === firstImageIndex) {
+          firstImageBottom = rect.bottom + window.scrollY - pinnedOffset;
+          firstImageLeft = rect.left;
+          dragHint.style.left = `${rect.left}px`;
+        }
         const modelRadius = size * 0.85;
         return {
           x: rect.left + rect.width / 2,
-          y: rect.top + window.scrollY + rect.height / 2,
+          y: rect.top + window.scrollY + rect.height / 2 - pinnedOffset * introWeight,
           // Sweep over image content to light it, rather than disappearing
           // beyond the sides of full-width photographs.
           radiusX: isImage ? rect.width * 0.38 : rect.width / 2 + modelRadius + titleClearance,
           radiusY: rect.height * (isImage ? 0.32 : 0.28),
           size,
+          introWeight,
         };
       });
-      const headingTop = introHeading.getBoundingClientRect().top + window.scrollY;
+      const headingTop = introHeading.getBoundingClientRect().top + window.scrollY - pinnedOffset;
       introHeading.style.setProperty('--cave-title-origin', `${bounds[0].y - headingTop}px`);
       introHeading.style.removeProperty('transform');
       if (activeIndex < 0) selectStop(true);
@@ -292,6 +333,7 @@ if (animationStage && stops.length) {
         render();
       },
       onMove(point) {
+        if (!dragHint.hidden) triedImageDrag = true;
         dragSpring.aim(point);
         render();
       },
@@ -335,6 +377,10 @@ if (animationStage && stops.length) {
     if (import.meta.hot) {
       import.meta.hot.dispose(() => {
         disposed = true;
+        dragHint.hidden = true;
+        hintTravel?.kill();
+        intro.style.removeProperty('--intro-pin-top');
+        introRunway.style.removeProperty('--intro-pin-distance');
         travel?.kill();
         returnMotion?.kill();
         dragControl.dispose();
