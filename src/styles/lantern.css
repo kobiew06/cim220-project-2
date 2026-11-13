@@ -1,0 +1,107 @@
+.image-reveal-shadow { position: absolute; pointer-events: none; }
+
+.animation-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  overflow: hidden;
+  pointer-events: none;
+}
+.reference-image, .section-heading, .team-section > *, .site-footer {
+  position: relative;
+  z-index: 2;
+}
+.animation-stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.lantern-drag-hint {
+  position: absolute;
+  width: 160px;
+  z-index: 6;
+  translate: 16px calc(-100% - 16px);
+  transform-origin: bottom left;
+  pointer-events: none;
+  color: var(--cream);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.lantern-drag-hint:not([hidden]) {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+.lantern-drag-hint img {
+  filter: brightness(0) invert(1);
+}
+.lantern-drag-hint:not([hidden]) { animation: drag-hint-appear 240ms ease-out both; }
+.lantern-drag-hint:not([hidden]) img { animation: drag-hint-sway 700ms ease-in-out infinite alternate; }
+@keyframes drag-hint-appear {
+  from { opacity: 0; transform: scale(.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes drag-hint-sway {
+  from { transform: translateX(-22px) rotate(-13deg); }
+  to { transform: translateX(22px) rotate(13deg); }
+}
+.lantern-page-light {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 700ms ease;
+}
+.lantern-page-light.is-lit { opacity: var(--page-light-strength, 1); }
+.lantern-drag-handle {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 6;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.lantern-drag-handle.is-dragging { cursor: grabbing; }
+.lantern-drag-handle:focus-visible { outline: 1px dashed var(--gold); outline-offset: 4px; }
+.lantern-shadow-text { text-shadow: var(--lantern-cast-shadow, none); }
+.lantern-shadow-image { box-shadow: var(--lantern-cast-shadow, none); }
+.lantern-page-light::before,
+.lantern-page-light::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+.lantern-page-light::before {
+  background: radial-gradient(
+    circle var(--light-radius, 420px) at var(--light-x, 50%) var(--light-y, 30%),
+    transparent 0%,
+    rgb(4 6 3 / .08) 18%,
+    rgb(4 6 3 / .32) 52%,
+    rgb(4 6 3 / var(--page-darkness, .62)) 100%
+  );
+}
+.lantern-page-light::after {
+  background: radial-gradient(
+    circle var(--light-radius, 420px) at var(--light-x, 50%) var(--light-y, 30%),
+    rgb(255 177 67 / .17) 0%,
+    rgb(255 158 46 / .07) 22%,
+    transparent 65%
+  );
+  mix-blend-mode: screen;
+}
+.animation-stage p {
+  width: 100%;
+  margin: 0;
+  padding: 15px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  color: var(--orange);
+  font-size: 13px;
+}

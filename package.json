@@ -2,9 +2,8 @@
   "name": "project",
   "version": "1.0.0",
   "description": "This is our project site. It’s just HTML, CSS and JavaScript, with no backend or setup.",
-  "main": "script.js",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
@@ -16,7 +15,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "bugs": {
     "url": "https://github.com/kobiew06/cim220-project-2/issues"
   },

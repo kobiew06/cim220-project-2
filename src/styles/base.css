@@ -1,0 +1,32 @@
+:root {
+  font-family: 'DM Sans', Arial, sans-serif;
+  font-weight: 400;
+  color: #f3e8d8;
+  background: var(--page-background);
+  --cream: #f3e8d8;
+  --tan: #d5c1a7;
+  --ink: #302922;
+  --muted: #b9ad9e;
+  --line: #65594d;
+  --gold: #fbc246;
+  --orange: #fe9135;
+  --burnt: #e05f1d;
+  --rust: #b43e0e;
+  --deep-rust: #8f1a00;
+  --page-background: #25221e;
+  --light: #eee2d1;
+  --content-width: 1000px;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scrollbar-width: none; }
+html::-webkit-scrollbar { display: none; }
+html.lenis { scroll-behavior: auto !important; }
+body { margin: 0; background: var(--page-background); color: var(--cream); overflow-x: clip; }
+a { color: inherit; }
+
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}

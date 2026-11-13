@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 export async function loadLantern() {
-  const url = new URL('./assets/lantern.glb', import.meta.url).href;
+  const url = new URL('../assets/lantern.glb', import.meta.url).href;
   const gltf = await new GLTFLoader().loadAsync(url);
   const model = gltf.scene;
   model.updateMatrixWorld(true);

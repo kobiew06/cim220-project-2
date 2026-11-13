@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import caveUrl from './assets/cave.glb?url';
-import { caveRevealStart, caveRevealEnd } from './scroll-mode.js';
+import caveUrl from '../assets/cave.glb?url';
+import { caveRevealStart, caveRevealEnd } from '../page/scroll-mode.js';
 
 export function createCaveEntrance(onReady) {
   const section = document.querySelector('.cave-entrance');

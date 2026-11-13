@@ -1,0 +1,81 @@
+main section { scroll-margin-top: 80px; }
+
+main { width: 100%; }
+
+.intro {
+  padding: clamp(64px, 10vw, 112px) max(24px, calc((100% - var(--content-width)) / 2)) 62px;
+}
+.intro-heading { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; padding: 48px 0 64px; }
+.intro-heading {
+  transform: var(--cave-title-transform, none);
+  transform-origin: center var(--cave-title-origin, 40%);
+}
+.intro-title, .intro-copy { position: relative; z-index: 2; }
+.eyebrow { font-size: 11px; margin: 0 0 14px; color: var(--orange); letter-spacing: .09em; text-transform: uppercase; }
+h1,
+h2 { margin: 0; font-family: 'Space Grotesk', Arial, sans-serif; font-weight: 600; white-space: nowrap; min-width: 0; }
+h1 { font-size: clamp(28px, 8vw, 88px); line-height: .98; letter-spacing: -.055em; }
+h2 { font-size: clamp(29px, 4.5vw, 42px); line-height: 1.06; letter-spacing: -.035em; }
+.intro-copy { max-width: 640px; margin: 0; padding-left: 17px; border-left: 3px solid var(--rust); color: var(--tan); font-size: 16px; line-height: 1.6; }
+
+.content-section {
+  width: 100%;
+  padding: 50px max(24px, calc((100% - var(--content-width)) / 2)) 58px;
+}
+.dark-section { color: var(--cream); background: #1d1c18; }
+.psychology-section,
+.team-section { color: var(--cream); background: #20221d; }
+.psychology-section .eyebrow,
+.team-section .eyebrow { color: var(--orange); }
+.section-heading { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); align-items: end; gap: 42px; margin-bottom: 28px; }
+.section-heading > div { min-width: 0; padding-left: 15px; border-left: 2px solid var(--rust); }
+.section-heading > p { max-width: 360px; margin: 0 0 3px; color: var(--muted); font-size: 14px; line-height: 1.55; }
+.dark-section .section-heading > p { color: var(--tan); }
+.plain-placeholder { margin: 0; padding: 15px 0 3px; border-top: 1px solid var(--line); color: var(--orange); font-size: 13px; }
+.psychology-section .plain-placeholder,
+.team-section .plain-placeholder { border-color: #bdad98; color: var(--deep-rust); }
+
+.reference-image { margin: 0; }
+.reference-image img { display: block; width: 100%; object-fit: cover; }
+.hero-image img { height: clamp(280px, 48vw, 520px); object-position: center 52%; }
+.cave-light-image { width: min(100%, 740px); margin: 8px 0 8px auto; }
+.cave-light-image img { height: clamp(230px, 34vw, 360px); }
+.artwork-image { width: min(100%, 720px); margin: 4px auto 0 0; }
+.artwork-image img { height: clamp(230px, 36vw, 390px); }
+.reference-image figcaption { display: flex; justify-content: space-between; gap: 20px; padding: 9px 0; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 10px; }
+.reference-image figcaption a { color: var(--rust); text-underline-offset: 3px; }
+.dark-section .reference-image figcaption { border-color: var(--line); color: var(--tan); }
+.dark-section .reference-image figcaption a { color: var(--gold); }
+
+.resource-row { display: grid; grid-template-columns: 1fr 1.75fr; align-items: baseline; gap: 30px; margin-top: 30px; padding-top: 15px; border-top: 1px solid var(--rust); }
+.resource-row > p:first-child { margin: 0; color: var(--muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+.resource-row .plain-placeholder { padding: 0; border: 0; }
+.team-section { padding-bottom: 76px; }
+.team-list { margin: 24px 0 0; padding: 0; list-style: none; border-top: 1px solid #bdad98; }
+.team-list li { display: flex; justify-content: space-between; gap: 24px; padding: 15px 0; border-bottom: 1px solid #bdad98; font-size: 14px; }
+.team-list li span:last-child { color: var(--tan); text-align: right; }
+.site-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 18px max(24px, calc((100vw - var(--content-width)) / 2));
+  min-height: 62px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+@media (max-width: 680px) {
+  .intro { padding-top: 72px; padding-inline: 20px; }
+  .intro-heading,
+  .section-heading { grid-template-columns: minmax(0, 1fr); gap: 19px; }
+  .content-section { padding: 38px 20px 46px; }
+  .cave-light-image,
+  .artwork-image { width: 100%; margin: 0; }
+  .reference-image figcaption { flex-direction: column; gap: 5px; }
+  .resource-row { grid-template-columns: 1fr; gap: 14px; }
+  .team-list li { flex-direction: column; gap: 5px; }
+  .team-list li span:last-child { text-align: left; }
+  .site-footer { align-items: flex-start; flex-direction: column; gap: 8px; padding: 18px 20px; }
+}
