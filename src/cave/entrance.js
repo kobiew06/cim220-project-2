@@ -6,8 +6,7 @@ import { caveRevealStart, caveRevealEnd } from '../page/scroll-mode.js';
 export function createCaveEntrance(onReady) {
   const section = document.querySelector('.cave-entrance');
   const view = section.querySelector('.cave-view');
-  const instructions = section.querySelector('.cave-instructions');
-  const controls = instructions.parentElement;
+  const controls = section.querySelector('.cave-controls');
   const project = document.querySelector('#project');
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x000000);
@@ -154,11 +153,7 @@ export function createCaveEntrance(onReady) {
     pickUp() {
       pickedUp = true;
     },
-    render(progress, x, y, lanternReady) {
-      const message = lanternReady && !pickedUp && progress < 0.12
-        ? 'Grab the lantern, then scroll'
-        : 'Scroll to enter the cave';
-      if (instructions.textContent !== message) instructions.textContent = message;
+    render(progress, x, y) {
       controls.style.opacity = 1 - THREE.MathUtils.smoothstep(progress, 0.12, 0.55);
       controls.inert = progress >= 0.55;
 

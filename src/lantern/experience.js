@@ -122,7 +122,7 @@ export function startLanternExperience() {
     const screenY = y - scroll;
     dragControl?.update(x, screenY, size, Boolean(lanternModel), documentAnchored ? scroll : null);
     pageLight.style.setProperty('--page-light-strength', handoff);
-    if (entrance) caveEntrance.render(entrance.progress, x, screenY, Boolean(lanternModel));
+    if (entrance) caveEntrance.render(entrance.progress, x, screenY);
     const flicker = stage.updateLighting({ x, y, width, renderHeight, origin, size, phase: orbit.phase });
     if (lanternModel) updateLanternFire(lanternModel, gsap.ticker.time, size);
     pageLight.style.setProperty('--light-x', `${x}px`);
